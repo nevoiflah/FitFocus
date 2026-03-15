@@ -1,0 +1,35 @@
+{
+  "expo": {
+    "name": "FitFocus.Mobile",
+    "slug": "fitfocus-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSPhotoLibraryUsageDescription": "FitFocus needs access to your photos for meal image logging."
+      }
+    },
+    "android": {
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.RECORD_AUDIO"
+      ]
+    },
+    "plugins": [
+      "expo-notifications",
+      "expo-image-picker",
+      "@react-native-community/datetimepicker"
+    ],
+    "extra": {
+      "apiBaseUrl": "http://192.168.1.58:5117/api",
+      "eas": {
+        "projectId": "3d058b67-8939-431f-97be-63304c2624ac"
+      }
+    },
+    "owner": "nevoiflah"
+  }
+}
