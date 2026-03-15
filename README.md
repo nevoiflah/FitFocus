@@ -1,64 +1,90 @@
-# FitFocus (Course Project)
+# FitFocus Project Documentation
 
-This workspace now contains:
+FitFocus is a comprehensive health and lifestyle tracking system consisting of a robust ASP.NET Core Web API backend and a cross-platform React Native mobile application. The system is designed to provide users with a centralized platform for managing daily health metrics, dietary habits, and medication schedules.
 
-- `FitFocus.Api` - ASP.NET Core Web API + SQL Server tables with `FitFocus_` prefix
-- `FitFocus.Mobile` - Expo React Native mobile app connected to the API
+## Project Structure
 
-## Implemented features
+The repository is organized into two primary components:
 
-- JWT auth: register + login
-- Profile management
-- Daily log create/update by date
-- Dashboard with risk scoring and signals
-- Meals with image selection + list by daily log id
-- Medication reminders + local scheduled notifications
-- Push flow:
-  - mobile registers Expo device token to backend
-  - backend can send test push via Expo push API
-- Admin endpoint (`Admin` role): users list
+*   **FitFocus.Api**: A RESTful Web API built with .NET 8, utilizing SQL Server for persistent data storage. It handles authentication, data aggregation, and notification scheduling.
+*   **FitFocus.Mobile**: A mobile application built with React Native and Expo. It provides the user interface for data entry, progress visualization via dynamic charts, and push notification management.
 
-## 1) Run backend
+---
 
-```bash
-cd FitFocus.Api
-dotnet restore
-dotnet run
-```
+## Technical Features
 
-Notes:
-- Connection string key is `myProjDB` in `appsettings.json`.
-- Tables are auto-created on startup from `sql/CreateFitFocusTables.sql`.
+### Authentication and Security
+*   **JSON Web Token (JWT) Implementation**: Secure, stateless authentication for all API endpoints.
+*   **Role-Based Access Control**: Support for User and Admin roles to manage system permissions.
+*   **Password Hashing**: Secure storage of user credentials using industry-standard hashing algorithms.
 
-## 2) Run mobile app
+### Dashboard and Data Visualization
+*   **Dynamic Health Metrics**: Visualization of Mood, Sleep, Stress, and Water intake using `react-native-chart-kit`.
+*   **Fixed Weekly View**: All charts display data from Sunday to Saturday for consistent trend analysis.
+*   **Interactive Analytics**: Touch-enabled data points providing detailed daily values and timestamps directly within the UI.
+*   **Automated Risk Scoring**: Backend service that calculates health risks based on historical data patterns.
 
-```bash
-cd FitFocus.Mobile
-npm install
-npm start
-```
+### Health Logging
+*   **Daily Activity Tracking**: Unified interface for logging daily health metrics.
+*   **Nutritional Management**: Meal logging system with support for calorie tracking via interactive sliders.
+*   **Medication Reminders**: Local and remote notification system for medication adherence, including a persistent schedule.
 
-## API base URL for mobile
+### Push Notifications
+*   **Expo Push Service Integration**: Backend support for sending push notifications to physical devices.
+*   **Device Token Management**: Secure registration and tracking of physical device tokens.
 
-In `FitFocus.Mobile/app.json`:
+---
 
-```json
-"extra": {
-  "apiBaseUrl": "http://localhost:5117/api"
-}
-```
+## Infrastructure and Technology Stack
 
-For a physical phone, replace `localhost` with your computer LAN IP.
+*   **Backend**: C#, ASP.NET Core, ADO.NET, SQL Server.
+*   **Mobile**: TypeScript, React Native, Expo.
+*   **Networking**: Axios for API communication.
+*   **Charts**: React Native Chart Kit for data visualization.
 
-## Test checklist (recommended)
+---
 
-1. Register a new user and log in.
-2. Save daily log twice on same date (should update, not fail).
-3. Add meal with image and reload list by daily log id.
-4. Add reminder and verify local scheduled notification.
-5. In profile, press `Send Test Push` after token registration.
-6. (Optional admin) Set role in DB and re-login:
+## Getting Started
 
-```sql
-UPDATE dbo.FitFocus_UsersApp SET Role='Admin' WHERE Email='nevo.iflah6@gmail.com';
-```
+### Backend Setup (FitFocus.Api)
+
+1.  **Configuration**: Ensure SQL Server is accessible. Update the connection string in `appsettings.json` under the `myProjDB` key.
+2.  **Restore Dependencies**:
+    ```bash
+    cd FitFocus.Api
+    dotnet restore
+    ```
+3.  **Launch API**:
+    ```bash
+    dotnet run
+    ```
+    *The database tables will be automatically initialized on the first startup.*
+
+### Mobile Setup (FitFocus.Mobile)
+
+1.  **Installation**:
+    ```bash
+    cd FitFocus.Mobile
+    npm install
+    ```
+2.  **Environment Configuration**: Update `app.json` with the correct `apiBaseUrl`. If testing on a physical device, use your machine's local IP address instead of `localhost`.
+3.  **Start Development Server**:
+    ```bash
+    npx expo start
+    ```
+
+---
+
+## Development Standards
+
+### Git Configuration
+The project uses a comprehensive `.gitignore` strategy to exclude:
+*   Standard .NET build directories (`bin/`, `obj/`).
+*   Node.js dependencies (`node_modules/`).
+*   Local environment settings and secret files (`appsettings.json`, `.env`).
+*   IDE-specific configuration folders (`.vscode/`, `.idea/`).
+
+---
+
+## Project Context
+This project was developed as part of the Mobile Application Development course at Ruppin Academic Center.
