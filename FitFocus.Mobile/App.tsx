@@ -26,6 +26,7 @@ Notifications.setNotificationHandler({
 import {
   ActivityIndicator,
   Alert,
+  Image,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -105,7 +106,11 @@ function InputField({
     <View style={styles.inputWrap}>
       <Text style={styles.inputLabel}>{label}</Text>
       <TextInput
-        style={[styles.input, style]}
+        style={[
+          styles.input,
+          rest.secureTextEntry ? { textAlign: "left" } : null,
+          style,
+        ]}
         placeholderTextColor="#8a97b6"
         {...rest}
       />
@@ -135,7 +140,7 @@ function SliderInput({
       <View style={styles.labelRow}>
         <Text style={styles.inputLabel}>{label}</Text>
         <Text style={{ color: "#4c6fff", fontWeight: "700" }}>
-          {value}
+          {step < 1 ? value.toFixed(1) : value}
           {unit}
         </Text>
       </View>
@@ -218,41 +223,55 @@ function AuthScreen({ onAuthenticated }: { onAuthenticated: (s: Session) => void
 
   return (
     <SafeAreaView style={styles.authSafeArea} edges={["top", "bottom"]}>
-      <KeyboardAvoidingView style={styles.authWrapper} behavior={Platform.OS === "ios" ? "padding" : undefined}>
-        <View style={styles.authCard}>
-          <Text style={styles.title}>FitFocus</Text>
-          <Text style={styles.subtitle}>Personal health and risk tracking</Text>
-          {isRegister ? (
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
+      >
+        <ScrollView
+          contentContainerStyle={styles.authScroll}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.authCard}>
+            <Text style={styles.title}>FitFocus</Text>
+            <Text style={styles.subtitle}>Personal health and risk tracking</Text>
+            {isRegister ? (
+              <InputField
+                label="Full Name"
+                placeholder="Your full name"
+                value={fullName}
+                onChangeText={setFullName}
+              />
+            ) : null}
             <InputField
-              label="Full Name"
-              placeholder="Your full name"
-              value={fullName}
-              onChangeText={setFullName}
+              label="Email"
+              placeholder="name@example.com"
+              keyboardType="email-address"
+              autoCapitalize="none"
+              value={email}
+              onChangeText={setEmail}
             />
-          ) : null}
-          <InputField
-            label="Email"
-            placeholder="name@example.com"
-            keyboardType="email-address"
-            autoCapitalize="none"
-            value={email}
-            onChangeText={setEmail}
-          />
-          <InputField
-            label="Password"
-            placeholder="Password"
-            secureTextEntry
-            value={password}
-            onChangeText={setPassword}
-          />
-          {busy ? <ActivityIndicator /> : <ActionButton title={isRegister ? "Create account" : "Login"} onPress={submit} />}
-          <View style={{ height: 10 }} />
-          <ActionButton
-            title={isRegister ? "Already have an account? Login" : "Need an account? Register"}
-            onPress={() => setIsRegister((x) => !x)}
-            variant="secondary"
-          />
-        </View>
+            <InputField
+              label="Password"
+              placeholder="Password"
+              secureTextEntry
+              value={password}
+              onChangeText={setPassword}
+            />
+            {busy ? (
+              <ActivityIndicator />
+            ) : (
+              <ActionButton title={isRegister ? "Create account" : "Login"} onPress={submit} />
+            )}
+            <View style={{ height: 10 }} />
+            <ActionButton
+              title={isRegister ? "Already have an account? Login" : "Need an account? Register"}
+              onPress={() => setIsRegister((x) => !x)}
+              variant="secondary"
+            />
+          </View>
+        </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -626,6 +645,24 @@ function MealsScreen() {
     }
   };
 
+  const deleteMeal = (id: number) => {
+    Alert.alert("Delete Meal", "Are you sure you want to remove this entry?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            await api.deleteMeal(id);
+            setList((prev) => prev.filter((m) => m.id !== id));
+          } catch (err) {
+            Alert.alert("Error", extractErrorMessage(err, "Could not delete meal."));
+          }
+        },
+      },
+    ]);
+  };
+
   const mealOptions = ["Breakfast", "Lunch", "Dinner", "Snack"];
 
   return (
@@ -668,7 +705,14 @@ function MealsScreen() {
 
         <View style={{ height: 10 }} />
         <ActionButton title="Pick meal image" onPress={pickImage} variant="secondary" />
-        {imageUrl ? <Text style={styles.card}>Image selected: ...{imageUrl.slice(-20)}</Text> : null}
+        {imageUrl ? (
+          <View style={[styles.card, { alignItems: "center", marginTop: 10 }]}>
+            <Image source={{ uri: imageUrl }} style={{ width: "100%", height: 180, borderRadius: 12 }} resizeMode="cover" />
+            <Pressable onPress={() => setImageUrl("")} style={{ marginTop: 8 }}>
+              <Text style={{ color: "#cc4a6a", fontWeight: "600" }}>Remove Image</Text>
+            </Pressable>
+          </View>
+        ) : null}
 
         <View style={{ height: 10 }} />
         {busy ? <ActivityIndicator /> : <ActionButton title="Save Meal" onPress={submit} />}
@@ -682,10 +726,25 @@ function MealsScreen() {
           <Text style={styles.card}>No meals logged for this ID.</Text>
         ) : (
           list.map((m) => (
-            <View key={String(m.id)} style={styles.card}>
-              <Text style={{ fontWeight: "700", color: "#243b7e" }}>{m.mealType}</Text>
-              <Text style={{ color: "#444" }}>{m.mealName}</Text>
-              {m.calories ? <Text style={{ fontSize: 12, color: "#666" }}>{m.calories} kcal</Text> : null}
+            <View key={String(m.id)} style={[styles.card, { flexDirection: "row", alignItems: "center" }]}>
+              {m.imageUrl ? (
+                <Image
+                  source={{ uri: m.imageUrl }}
+                  style={{ width: 60, height: 60, borderRadius: 8, marginRight: 12 }}
+                />
+              ) : (
+                <View style={{ width: 60, height: 60, borderRadius: 8, backgroundColor: "#f1f5f9", alignItems: "center", justifyContent: "center", marginRight: 12 }}>
+                  <Ionicons name="fast-food-outline" size={24} color="#94a3b8" />
+                </View>
+              )}
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontWeight: "700", color: "#243b7e" }}>{m.mealType}</Text>
+                <Text style={{ color: "#444" }}>{m.mealName}</Text>
+                {m.calories ? <Text style={{ fontSize: 12, color: "#666" }}>{m.calories} kcal</Text> : null}
+              </View>
+              <Pressable onPress={() => deleteMeal(m.id)} style={({ pressed }) => [{ padding: 8, opacity: pressed ? 0.6 : 1 }]}>
+                <Ionicons name="trash-outline" size={20} color="#cc4a6a" />
+              </Pressable>
             </View>
           ))
         )}
@@ -991,6 +1050,9 @@ export default function App() {
 
   const registerNotifications = async (): Promise<{ token: string; error?: string }> => {
     try {
+      if (!notificationsEnabled) {
+        return { token: "", error: "Notifications are disabled in the app." };
+      }
       if (Platform.OS === "android") {
         await Notifications.setNotificationChannelAsync("default", {
           name: "default",
@@ -1035,6 +1097,14 @@ export default function App() {
   const ensurePushReady = async () => {
     const { token, error } = await registerNotifications();
     if (!token) {
+      if (!notificationsEnabled) {
+        // Try to unregister if possible, though we might not have a fresh token
+        // Usually we'd store the last known token in AsyncStorage
+        const lastToken = await AsyncStorage.getItem("last_expo_token");
+        if (lastToken) {
+          await api.unregisterDeviceToken(lastToken);
+        }
+      }
       return {
         ok: false,
         message: error ?? "Could not obtain an Expo push token.",
@@ -1043,6 +1113,7 @@ export default function App() {
 
     try {
       await api.registerDeviceToken(token, Device.deviceName ?? undefined);
+      await AsyncStorage.setItem("last_expo_token", token);
       return { ok: true };
     } catch {
       return { ok: false, message: "Could not register device token on server." };
@@ -1068,12 +1139,17 @@ export default function App() {
       if (!session) {
         return;
       }
-
       await ensurePushReady();
     };
 
     syncDeviceToken();
-  }, [session]);
+  }, [session, notificationsEnabled]);
+
+  useEffect(() => {
+    if (!notificationsEnabled) {
+      Notifications.cancelAllScheduledNotificationsAsync();
+    }
+  }, [notificationsEnabled]);
 
   if (loading) {
     return (
@@ -1098,7 +1174,7 @@ export default function App() {
                   tabBarIcon: ({ focused, color, size }) => {
                     let iconName: any;
                     if (route.name === "Dashboard") iconName = focused ? "stats-chart" : "stats-chart-outline";
-                    else if (route.name === "DailyLog") iconName = focused ? "calendar" : "calendar-outline";
+                    else if (route.name === "Daily Log") iconName = focused ? "calendar" : "calendar-outline";
                     else if (route.name === "Meals") iconName = focused ? "fast-food" : "fast-food-outline";
                     else if (route.name === "Reminders") iconName = focused ? "alarm" : "alarm-outline";
                     else if (route.name === "Profile") iconName = focused ? "person" : "person-outline";
@@ -1116,7 +1192,7 @@ export default function App() {
                 })}
               >
                 <Tabs.Screen name="Dashboard" component={DashboardScreen} />
-                <Tabs.Screen name="DailyLog" component={DailyLogScreen} />
+                <Tabs.Screen name="Daily Log" component={DailyLogScreen} />
                 <Tabs.Screen name="Meals" component={MealsScreen} />
                 <Tabs.Screen name="Reminders">
                   {(p) => <RemindersScreen {...p} notificationsEnabled={notificationsEnabled} />}
@@ -1149,9 +1225,13 @@ const styles = StyleSheet.create({
   },
   authWrapper: {
     flex: 1,
+  },
+  authScroll: {
+    flexGrow: 1,
     justifyContent: "center",
     alignItems: "center",
     paddingHorizontal: 16,
+    paddingVertical: 24,
   },
   authCard: {
     width: "100%",

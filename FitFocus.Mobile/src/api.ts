@@ -165,6 +165,9 @@ export const api = {
     const { data } = await http.get<Meal[]>(`/meals/by-log/${logId}`);
     return data;
   },
+  async deleteMeal(mealId: number) {
+    await http.delete(`/meals/${mealId}`);
+  },
   async getReminders() {
     const { data } = await http.get<Reminder[]>("/reminders");
     return data;
@@ -179,6 +182,9 @@ export const api = {
   },
   async registerDeviceToken(expoPushToken: string, deviceName?: string) {
     await http.post("/notifications/register-device", { expoPushToken, deviceName });
+  },
+  async unregisterDeviceToken(expoPushToken: string) {
+    await http.post("/notifications/unregister-device", { expoPushToken });
   },
   async sendTestPush(title: string, body: string) {
     const { data } = await http.post("/notifications/send-test", { title, body });

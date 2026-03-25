@@ -24,6 +24,14 @@ public sealed class NotificationsController(
         return NoContent();
     }
 
+    [HttpPost("unregister-device")]
+    public async Task<ActionResult> UnregisterDevice(UnregisterDeviceTokenRequest request)
+    {
+        var userId = User.GetUserId();
+        await deviceTokens.DeleteAsync(userId, request.ExpoPushToken.Trim());
+        return NoContent();
+    }
+
     [HttpPost("send-test")]
     public async Task<ActionResult> SendTest(SendTestPushRequest request)
     {

@@ -1,34 +1,9 @@
 /*
-    FULL RESET FOR FITFOCUS TABLES
-    1) Drop FKs connected to any table with FitFocus_ prefix
-    2) Drop all tables with FitFocus_ prefix
-    3) Recreate current FitFocus schema
+    FITFOCUS TABLE INITIALIZATION
+    Ensures all necessary tables exist without dropping existing data.
 */
 
-DECLARE @DropFkSql NVARCHAR(MAX) = N'';
-DECLARE @DropTableSql NVARCHAR(MAX) = N'';
-
-SELECT @DropFkSql = @DropFkSql +
-    N'ALTER TABLE [' + SCHEMA_NAME(pt.schema_id) + N'].[' + pt.name + N'] DROP CONSTRAINT [' + fk.name + N'];' + CHAR(10)
-FROM sys.foreign_keys fk
-INNER JOIN sys.tables pt ON fk.parent_object_id = pt.object_id
-INNER JOIN sys.tables rt ON fk.referenced_object_id = rt.object_id
-WHERE pt.name LIKE N'FitFocus[_]%' OR rt.name LIKE N'FitFocus[_]%';
-
-IF LEN(@DropFkSql) > 0
-BEGIN
-    EXEC sp_executesql @DropFkSql;
-END;
-
-SELECT @DropTableSql = @DropTableSql +
-    N'DROP TABLE [' + SCHEMA_NAME(t.schema_id) + N'].[' + t.name + N'];' + CHAR(10)
-FROM sys.tables t
-WHERE t.name LIKE N'FitFocus[_]%';
-
-IF LEN(@DropTableSql) > 0
-BEGIN
-    EXEC sp_executesql @DropTableSql;
-END;
+-- (Drop logic removed to ensure persistence)
 
 IF OBJECT_ID('dbo.FitFocus_UsersApp', 'U') IS NULL
 BEGIN

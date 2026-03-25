@@ -25,8 +25,9 @@ The repository is organized into two primary components:
 *   **Automated Risk Scoring**: Backend service that calculates health risks based on historical data patterns.
 
 ### Health Logging
-*   **Daily Activity Tracking**: Unified interface for logging daily health metrics.
-*   **Nutritional Management**: Meal logging system with support for calorie tracking via interactive sliders.
+*   **Daily Activity Tracking**: Unified interface for logging daily health metrics like mood, sleep, and water.
+*   **Nutritional Management**: Meal logging system with photo support, calorie tracking via interactive sliders, and deletion capability.
+*   **Meal Image Previews**: Real-time image preview during selection and persistent image display in meal cards.
 *   **Medication Reminders**: Local and remote notification system for medication adherence, including a persistent schedule.
 
 ### Push Notifications
@@ -58,7 +59,7 @@ The repository is organized into two primary components:
     ```bash
     dotnet run
     ```
-    *The database tables will be automatically initialized on the first startup.*
+    *The database tables will be automatically initialized on the first startup. Data is persistent and will not be reset on consecutive restarts.*
 
 ### Mobile Setup (FitFocus.Mobile)
 
@@ -72,6 +73,22 @@ The repository is organized into two primary components:
     ```bash
     npx expo start
     ```
+
+---
+
+## Troubleshooting (Common Issues)
+
+### 1. Networking (Android Phone vs PC)
+*   **Physical Device**: Ensure the Android phone and PC are on the **same Wi-Fi**.
+*   **API URL**: In `src/api.ts`, ensure `apiBaseUrl` points to your computer's LAN IP (e.g., `192.168.1.XX`) if using a real phone. Expo usually handles this automatically.
+*   **Android Cleartext**: Android blocks `http` by default. Our `app.json` is configured to allow it for development, but ensure you use a modern Expo Go app.
+
+### 2. Windows Firewall
+Windows usually blocks incoming connections to port **5117**. 
+*   **Fix**: Grant `dotnet run` access to "Private Networks" when prompted, or manually open the port in Windows Firewall settings.
+
+### 3. Database Access
+The database is hosted on a remote server. If you are off-campus or not using a VPN, the connection might be blocked by the server's firewall.
 
 ---
 

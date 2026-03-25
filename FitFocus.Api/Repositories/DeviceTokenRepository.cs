@@ -28,6 +28,17 @@ public sealed class DeviceTokenRepository(ISqlConnectionFactory connectionFactor
         await command.ExecuteNonQueryAsync();
     }
 
+    public async Task DeleteAsync(int userId, string expoPushToken)
+    {
+        const string sql = "DELETE FROM dbo.FitFocus_DeviceTokensApp WHERE UserId = @UserId AND ExpoPushToken = @ExpoPushToken";
+        await using var connection = connectionFactory.CreateConnection();
+        await using var command = new SqlCommand(sql, connection);
+        command.Parameters.AddWithValue("@UserId", userId);
+        command.Parameters.AddWithValue("@ExpoPushToken", expoPushToken);
+        await connection.OpenAsync();
+        await command.ExecuteNonQueryAsync();
+    }
+
     public async Task<List<string>> GetTokensByUserAsync(int userId)
     {
         const string sql = """
