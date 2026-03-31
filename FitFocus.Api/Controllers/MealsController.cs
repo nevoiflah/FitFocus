@@ -12,6 +12,14 @@ namespace FitFocus.Api.Controllers;
 [Route("api/[controller]")]
 public sealed class MealsController(IMealRepository meals) : ControllerBase
 {
+    [HttpGet]
+    public async Task<ActionResult<List<MealEntry>>> GetAll([FromQuery] DateOnly? date, [FromQuery] string? mealType)
+    {
+        var userId = User.GetUserId();
+        var result = await meals.GetAsync(userId, date, mealType);
+        return Ok(result);
+    }
+
     [HttpPost]
     public async Task<ActionResult> Create(CreateMealRequest request)
     {
@@ -20,12 +28,10 @@ public sealed class MealsController(IMealRepository meals) : ControllerBase
         {
             UserId = userId,
             DailyLogId = request.DailyLogId,
+            LogDate = request.LogDate,
             MealType = request.MealType.Trim(),
             MealName = request.MealName.Trim(),
             Calories = request.Calories,
-            ProteinGrams = request.ProteinGrams,
-            CarbsGrams = request.CarbsGrams,
-            FatGrams = request.FatGrams,
             ImageUrl = request.ImageUrl
         });
 

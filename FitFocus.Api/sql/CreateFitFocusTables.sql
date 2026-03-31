@@ -50,14 +50,16 @@ BEGIN
         MealType NVARCHAR(40) NOT NULL,
         MealName NVARCHAR(120) NOT NULL,
         Calories INT NULL,
-        ProteinGrams DECIMAL(6,2) NULL,
-        CarbsGrams DECIMAL(6,2) NULL,
-        FatGrams DECIMAL(6,2) NULL,
         ImageUrl NVARCHAR(500) NULL,
+        LogDate DATE NOT NULL DEFAULT CAST(SYSUTCDATETIME() AS DATE),
         CreatedAt DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
         CONSTRAINT FK_FitFocus_MealsApp_UsersApp FOREIGN KEY (UserId) REFERENCES dbo.FitFocus_UsersApp(Id),
         CONSTRAINT FK_FitFocus_MealsApp_DailyLogsApp FOREIGN KEY (DailyLogId) REFERENCES dbo.FitFocus_DailyLogsApp(Id)
     );
+END
+ELSE IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('dbo.FitFocus_MealsApp') AND name = 'LogDate')
+BEGIN
+    ALTER TABLE dbo.FitFocus_MealsApp ADD LogDate DATE NOT NULL DEFAULT CAST(SYSUTCDATETIME() AS DATE);
 END;
 
 IF OBJECT_ID('dbo.FitFocus_MedicationRemindersApp', 'U') IS NULL

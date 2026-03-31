@@ -352,6 +352,7 @@ function ChartBox({ title, data, value, unit, color }: any) {
 }
 
 function DashboardScreen() {
+  const insets = useSafeAreaInsets();
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [history, setHistory] = useState<DailyLog[]>([]);
   const [busy, setBusy] = useState(false);
@@ -362,7 +363,7 @@ function DashboardScreen() {
       
       // Calculate start of current week (Sunday) and end (Saturday)
       const now = new Date();
-      const currentDay = now.getDay(); // 0 is Sunday
+      const currentDay = now.getDay();
       
       const sun = new Date(now);
       sun.setDate(now.getDate() - currentDay);
@@ -381,7 +382,7 @@ function DashboardScreen() {
       ]);
 
       setSummary(summaryData);
-      setHistory((historyData || []).sort((a, b) => a.logDate.localeCompare(b.logDate)));
+      setHistory((historyData ?? []).sort((a, b) => a.logDate.localeCompare(b.logDate)));
     } catch (err: any) {
       console.error("Dashboard error:", err);
     } finally {
@@ -395,10 +396,10 @@ function DashboardScreen() {
     }, []),
   );
 
+  const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
   const todayData = useMemo(() => {
-    const today = new Date().toISOString().slice(0, 10);
     return history.find((h) => h.logDate === today);
-  }, [history]);
+  }, [history, today]);
 
   const getChartData = (key: keyof DailyLog, color: string) => {
     const daysArr = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -431,8 +432,11 @@ function DashboardScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.screen} edges={["top", "bottom"]}>
-      <ScrollView style={styles.screen}>
+    <View style={styles.screen}>
+      <ScrollView 
+        style={styles.screen} 
+        contentContainerStyle={[styles.screenContent, { paddingTop: insets.top + 24, paddingBottom: insets.bottom }]}
+      >
         <Text style={styles.title}>Dashboard</Text>
         {busy && <ActivityIndicator style={{ marginBottom: 10 }} />}
 
@@ -482,11 +486,12 @@ function DashboardScreen() {
         <View style={{ height: 40 }} />
         <View style={{ height: 40 }} />
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
 function DailyLogScreen() {
+  const insets = useSafeAreaInsets();
   const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
   const [mood, setMood] = useState(7);
   const [sleep, setSleep] = useState(7);
@@ -535,8 +540,11 @@ function DailyLogScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.screen} edges={["top", "bottom"]}>
-      <ScrollView style={styles.screen}>
+    <View style={styles.screen}>
+      <ScrollView 
+        style={styles.screen} 
+        contentContainerStyle={[styles.screenContent, { paddingTop: insets.top + 24, paddingBottom: insets.bottom }]}
+      >
         <Text style={styles.title}>Daily Log</Text>
         <Text style={styles.subtitle}>{today}</Text>
 
@@ -558,37 +566,82 @@ function DailyLogScreen() {
         {busy ? <ActivityIndicator /> : <ActionButton title="Save Daily Log" onPress={submit} />}
         <View style={{ height: 30 }} />
       </ScrollView>
-    </SafeAreaView>
+    </View>
+  );
+}
+
+function FilterChip({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={[styles.chip, active ? styles.chipActive : null]}
+    >
+      <Text style={[styles.chipText, active ? styles.chipTextActive : null]}>{label}</Text>
+    </Pressable>
   );
 }
 
 function MealsScreen() {
+  const insets = useSafeAreaInsets();
   const [mealType, setMealType] = useState("Lunch");
   const [mealName, setMealName] = useState("");
   const [calories, setCalories] = useState(300);
   const [imageUrl, setImageUrl] = useState("");
   const [dailyLogId, setDailyLogId] = useState("");
   const [list, setList] = useState<Meal[]>([]);
+  const [availableDates, setAvailableDates] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
+  const [filterDate, setFilterDate] = useState("");
+  const [filterType, setFilterType] = useState("Any");
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showDatePanel, setShowDatePanel] = useState(false);
 
   const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
+
+  const loadHistory = async () => {
+    try {
+      setBusy(true);
+      const meals = await api.getMeals(
+        filterDate || undefined,
+        filterType === "Any" ? undefined : filterType
+      );
+      setList(meals);
+    } catch {
+      // ignore
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const refreshAvailableDates = async () => {
+    try {
+      const all = await api.getMeals();
+      // Ensure we only have unique date strings
+      const dates = [...new Set(all.map((m) => m.logDate))].filter(Boolean).sort().reverse();
+      setAvailableDates(dates);
+    } catch (err) {
+      console.log("Could not refresh dates", err);
+    }
+  };
 
   const autoFetchLogId = async () => {
     try {
       const log = await api.getDailyLog(today);
       if (log?.id) {
         setDailyLogId(String(log.id));
-        const loaded = await api.getMealsByLog(log.id);
-        setList(loaded);
       }
     } catch {
-      // no log for today is fine
+      setDailyLogId("");
     }
   };
 
-  useEffect(() => {
-    autoFetchLogId();
-  }, [today]);
+  useFocusEffect(
+    useCallback(() => {
+      autoFetchLogId();
+      loadHistory();
+      refreshAvailableDates();
+    }, [today, filterDate, filterType])
+  );
 
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -607,21 +660,33 @@ function MealsScreen() {
     }
     try {
       setBusy(true);
+      let targetLogId = dailyLogId;
+      
+      // Double check if today's log exists for linking
+      if (!targetLogId) {
+        try {
+          const log = await api.getDailyLog(today);
+          if (log?.id) {
+            targetLogId = String(log.id);
+            setDailyLogId(targetLogId);
+          }
+        } catch { }
+      }
+
       await api.createMeal({
         mealType,
         mealName,
         calories: Number(calories),
         imageUrl: imageUrl || undefined,
-        dailyLogId: dailyLogId ? Number(dailyLogId) : undefined,
+        dailyLogId: targetLogId ? Number(targetLogId) : undefined,
+        logDate: today, // Crucial architectural fix: Always send today's date
       });
       Alert.alert("Saved", "Meal added.");
       setMealName("");
       setCalories(300);
       setImageUrl("");
-      if (dailyLogId) {
-        const loaded = await api.getMealsByLog(Number(dailyLogId));
-        setList(loaded);
-      }
+      loadHistory(); // Re-fetch the filtered history list
+      refreshAvailableDates(); // Update the available dates for filtering
     } catch (err) {
       Alert.alert("Error", extractErrorMessage(err, "Could not create meal."));
     } finally {
@@ -666,24 +731,28 @@ function MealsScreen() {
   const mealOptions = ["Breakfast", "Lunch", "Dinner", "Snack"];
 
   return (
-    <SafeAreaView style={styles.screen} edges={["top", "bottom"]}>
-      <ScrollView style={styles.screen}>
+    <View style={styles.screen}>
+      <ScrollView 
+        style={styles.screen} 
+        contentContainerStyle={[styles.screenContent, { paddingTop: insets.top + 24, paddingBottom: insets.bottom }]}
+      >
         <Text style={styles.title}>Meals</Text>
         <Text style={styles.subtitle}>Log what you ate today</Text>
-
+        <View style={{ height: 16 }} />
         <SegmentedPicker
           label="Meal Type"
           selected={mealType}
           onSelect={setMealType}
           options={mealOptions}
         />
-
+        <View style={{ height: 16 }} />
         <InputField
           label="What did you eat?"
           value={mealName}
           onChangeText={setMealName}
           placeholder="e.g. Grilled Chicken Salad"
         />
+        <View style={{ height: 16 }} />
 
         <SliderInput
           label="Calories"
@@ -694,16 +763,7 @@ function MealsScreen() {
           step={10}
           unit=" kcal"
         />
-
-        <InputField
-          label="Daily Log ID"
-          value={dailyLogId}
-          onChangeText={setDailyLogId}
-          placeholder="Detected automatically"
-          keyboardType="numeric"
-        />
-
-        <View style={{ height: 10 }} />
+        <View style={{ height: 16 }} />
         <ActionButton title="Pick meal image" onPress={pickImage} variant="secondary" />
         {imageUrl ? (
           <View style={[styles.card, { alignItems: "center", marginTop: 10 }]}>
@@ -714,16 +774,94 @@ function MealsScreen() {
           </View>
         ) : null}
 
-        <View style={{ height: 10 }} />
+        <View style={{ height: 16 }} />
         {busy ? <ActivityIndicator /> : <ActionButton title="Save Meal" onPress={submit} />}
+        
+        <View style={{ height: 48 }} />
+        <Text style={styles.title}>History Log</Text>
+        <Text style={styles.subtitle}>Filter and review your past meal entries</Text>
+        <View style={{ height: 16 }} />
 
-        <View style={{ height: 20 }} />
-        <Text style={styles.subtitle}>History for Log #{dailyLogId || "?"}</Text>
-        <ActionButton title="Refresh List" onPress={loadByLog} variant="secondary" />
+        <View style={{ marginBottom: 16 }}>
+          <Text style={{ fontSize: 13, fontWeight: "600", color: "#64748b", marginBottom: 8, marginLeft: 2 }}>
+            Filter by Date
+          </Text>
+          <View style={{ flexDirection: "row", alignItems: "center" }}>
+            <FilterChip
+              label="Any Date"
+              active={!filterDate}
+              onPress={() => setFilterDate("")}
+            />
+            <FilterChip
+              label="Today"
+              active={filterDate === today}
+              onPress={() => setFilterDate(today)}
+            />
+            <Pressable
+              style={[styles.chip, showDatePanel ? styles.chipActive : null]}
+              onPress={() => setShowDatePanel((v) => !v)}
+            >
+              <Ionicons
+                name="calendar-outline"
+                size={16}
+                color={showDatePanel ? "#fff" : "#64748b"}
+              />
+            </Pressable>
+          </View>
+
+          {showDatePanel && (
+            <View style={{ marginTop: 10 }}>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ paddingBottom: 4 }}
+              >
+                {availableDates.length === 0 ? (
+                  <Text style={{ fontSize: 13, color: "#94a3b8", paddingVertical: 8 }}>
+                    No entries found to filter by.
+                  </Text>
+                ) : (
+                  availableDates.map((d) => (
+                    <FilterChip
+                      key={d}
+                      label={d}
+                      active={filterDate === d}
+                      onPress={() => setFilterDate(d)}
+                    />
+                  ))
+                )}
+              </ScrollView>
+            </View>
+          )}
+        </View>
+
+        <View style={{ marginBottom: 20 }}>
+          <SegmentedPicker
+            label="Meal Type"
+            selected={filterType}
+            onSelect={setFilterType}
+            options={["Any", "Breakfast", "Lunch", "Dinner", "Snack"]}
+          />
+        </View>
+
+        {showDatePicker && (
+          <DateTimePicker
+            value={filterDate ? new Date(filterDate) : new Date()}
+            mode="date"
+            display="default"
+            onChange={(event, date) => {
+              setShowDatePicker(false);
+              if (date) setFilterDate(date.toISOString().slice(0, 10));
+            }}
+          />
+        )}
 
         <View style={{ height: 12 }} />
         {list.length === 0 ? (
-          <Text style={styles.card}>No meals logged for this ID.</Text>
+          <View style={[styles.card, { alignItems: "center", paddingVertical: 32 }]}>
+            <Ionicons name="search-outline" size={32} color="#cbd5e1" />
+            <Text style={{ marginTop: 8, color: "#94a3b8" }}>No meals found.</Text>
+          </View>
         ) : (
           list.map((m) => (
             <View key={String(m.id)} style={[styles.card, { flexDirection: "row", alignItems: "center" }]}>
@@ -738,19 +876,23 @@ function MealsScreen() {
                 </View>
               )}
               <View style={{ flex: 1 }}>
-                <Text style={{ fontWeight: "700", color: "#243b7e" }}>{m.mealType}</Text>
+                <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 2 }}>
+                  <Text style={{ fontWeight: "700", color: "#243b7e" }}>{m.mealType}</Text>
+                  <Text style={{ fontSize: 11, color: "#94a3b8" }}>{m.logDate}</Text>
+                </View>
                 <Text style={{ color: "#444" }}>{m.mealName}</Text>
                 {m.calories ? <Text style={{ fontSize: 12, color: "#666" }}>{m.calories} kcal</Text> : null}
               </View>
-              <Pressable onPress={() => deleteMeal(m.id)} style={({ pressed }) => [{ padding: 8, opacity: pressed ? 0.6 : 1 }]}>
-                <Ionicons name="trash-outline" size={20} color="#cc4a6a" />
+              <Pressable onPress={() => deleteMeal(m.id)} style={({ pressed }) => [{ padding: 8, marginLeft: 8, opacity: pressed ? 0.6 : 1 }]}>
+                <Ionicons name="trash-outline" size={18} color="#cc4a6a" />
               </Pressable>
             </View>
           ))
         )}
         <View style={{ height: 40 }} />
+
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -779,6 +921,7 @@ async function scheduleLocalReminder(title: string, body: string, time: string, 
 }
 
 function RemindersScreen({ notificationsEnabled }: { notificationsEnabled: boolean }) {
+  const insets = useSafeAreaInsets();
   const [items, setItems] = useState<Reminder[]>([]);
   const [medicationName, setMedicationName] = useState("");
   const [dosage, setDosage] = useState("");
@@ -823,8 +966,11 @@ function RemindersScreen({ notificationsEnabled }: { notificationsEnabled: boole
   };
 
   return (
-    <SafeAreaView style={styles.screen} edges={["top", "bottom"]}>
-      <ScrollView style={styles.screen}>
+    <View style={styles.screen}>
+      <ScrollView 
+        style={styles.screen} 
+        contentContainerStyle={[styles.screenContent, { paddingTop: insets.top + 24, paddingBottom: insets.bottom }]}
+      >
         <Text style={styles.title}>Reminders</Text>
         <InputField label="Medication Name" value={medicationName} onChangeText={setMedicationName} placeholder="e.g. Vitamin D" />
         <InputField label="Dosage" value={dosage} onChangeText={setDosage} placeholder="e.g. 1 pill" />
@@ -837,7 +983,7 @@ function RemindersScreen({ notificationsEnabled }: { notificationsEnabled: boole
           </Text>
         ))}
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -852,6 +998,7 @@ function ProfileScreen({
   notificationsEnabled: boolean;
   onToggleNotifications: (v: boolean) => void;
 }) {
+  const insets = useSafeAreaInsets();
   const [fullName, setFullName] = useState("");
   const [dobDay, setDobDay] = useState("");
   const [dobMonth, setDobMonth] = useState("");
@@ -917,8 +1064,11 @@ function ProfileScreen({
   };
 
   return (
-    <SafeAreaView style={styles.screen} edges={["top", "bottom"]}>
-      <ScrollView style={styles.screen}>
+    <View style={styles.screen}>
+      <ScrollView 
+        style={styles.screen} 
+        contentContainerStyle={[styles.screenContent, { paddingTop: insets.top + 24, paddingBottom: insets.bottom }]}
+      >
         <Text style={styles.title}>Profile</Text>
         <Text style={styles.subtitle}>Your personal information</Text>
 
@@ -994,11 +1144,12 @@ function ProfileScreen({
         <ActionButton title="Logout" onPress={onLogout} variant="danger" />
         <View style={{ height: 40 }} />
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
 function AdminScreen() {
+  const insets = useSafeAreaInsets();
   const [users, setUsers] = useState<AdminUser[]>([]);
 
   const load = async () => {
@@ -1014,8 +1165,11 @@ function AdminScreen() {
   }, []);
 
   return (
-    <SafeAreaView style={styles.screen} edges={["top", "bottom"]}>
-      <ScrollView style={styles.screen}>
+    <View style={styles.screen}>
+      <ScrollView 
+        style={styles.screen} 
+        contentContainerStyle={[styles.screenContent, { paddingTop: insets.top + 24, paddingBottom: insets.bottom }]}
+      >
         <Text style={styles.title}>Admin Users</Text>
         <ActionButton title="Refresh Users" onPress={load} />
         <View style={{ height: 12 }} />
@@ -1025,7 +1179,7 @@ function AdminScreen() {
           </Text>
         ))}
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -1183,6 +1337,7 @@ export default function App() {
             {(props) => (
               <Tabs.Navigator
                 screenOptions={({ route }) => ({
+                  headerShown: false,
                   tabBarIcon: ({ focused, color, size }) => {
                     let iconName: any;
                     if (route.name === "Dashboard") iconName = focused ? "stats-chart" : "stats-chart-outline";
@@ -1240,8 +1395,8 @@ const styles = StyleSheet.create({
   },
   authScroll: {
     flexGrow: 1,
-    justifyContent: "center",
     alignItems: "center",
+    justifyContent: "center",
     paddingHorizontal: 16,
     paddingVertical: 24,
   },
@@ -1266,19 +1421,23 @@ const styles = StyleSheet.create({
   },
   screen: {
     flex: 1,
-    padding: 16,
     backgroundColor: "#eef3ff",
+  },
+  screenContent: {
+    padding: 16,
   },
   title: {
     fontSize: 24,
     fontWeight: "700",
-    marginBottom: 6,
     color: "#243b7e",
+    marginBottom: 4,
+    textAlign: "center",
   },
   subtitle: {
     fontSize: 14,
-    color: "#6073a1",
-    marginBottom: 12,
+    color: "#64748b",
+    marginBottom: 20,
+    textAlign: "center",
   },
   inputWrap: {
     marginBottom: 8,
@@ -1291,13 +1450,55 @@ const styles = StyleSheet.create({
     marginLeft: 2,
   },
   input: {
+    height: 48,
     borderWidth: 1,
-    borderColor: "#ccd9ff",
-    backgroundColor: "#fdfdff",
+    borderColor: "#e2e8f0",
+    borderRadius: 8,
     paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 12,
-    marginBottom: 10,
+    backgroundColor: "#fff",
+    color: "#334155",
+  },
+  historyHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  filterBar: {
+    flexDirection: "row",
+    marginBottom: 16,
+  },
+  filterItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#f8fafc",
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    height: 38,
+    flex: 1,
+  },
+  chip: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: "#f1f5f9",
+    marginRight: 8,
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+  },
+  chipActive: {
+    backgroundColor: "#4c6fff",
+    borderColor: "#4c6fff",
+  },
+  chipText: {
+    fontSize: 13,
+    color: "#64748b",
+    fontWeight: "600",
+  },
+  chipTextActive: {
+    color: "#ffffff",
   },
   card: {
     backgroundColor: "#ffffff",

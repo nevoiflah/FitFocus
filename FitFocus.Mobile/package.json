@@ -3,11 +3,11 @@
   "version": "1.0.0",
   "main": "index.ts",
   "scripts": {
-    "start": "node ./scripts/start-expo.cjs --host lan",
-    "start:clean": "node ./scripts/start-expo.cjs --clear --host lan",
+    "start": "node ./scripts/start-expo.cjs",
+    "start:clean": "node ./scripts/start-expo.cjs --clear",
     "start:tunnel": "node ./scripts/start-expo.cjs --clear --tunnel",
-    "android": "node ./scripts/start-expo.cjs --android --host lan",
-    "ios": "node ./scripts/start-expo.cjs --ios --host lan",
+    "android": "node ./scripts/start-expo.cjs --android",
+    "ios": "node ./scripts/start-expo.cjs --ios",
     "web": "node ./scripts/start-expo.cjs --web"
   },
   "dependencies": {
@@ -32,10 +32,11 @@
     "react-native-gesture-handler": "~2.28.0",
     "react-native-safe-area-context": "~5.6.2",
     "react-native-screens": "~4.16.0",
-    "react-native-svg": "^15.15.3"
+    "react-native-svg": "15.12.1"
   },
   "devDependencies": {
     "@types/react": "~19.1.10",
+    "babel-preset-expo": "~12.0.0",
     "typescript": "~5.9.2"
   },
   "private": true

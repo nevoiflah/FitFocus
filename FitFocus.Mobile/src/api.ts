@@ -46,12 +46,10 @@ export type Meal = {
   id: number;
   userId: number;
   dailyLogId?: number;
+  logDate: string;
   mealType: string;
   mealName: string;
   calories?: number;
-  proteinGrams?: number;
-  carbsGrams?: number;
-  fatGrams?: number;
   imageUrl?: string;
 };
 
@@ -164,15 +162,19 @@ export const api = {
   },
   async createMeal(payload: {
     dailyLogId?: number;
+    logDate: string;
     mealType: string;
     mealName: string;
     calories?: number;
-    proteinGrams?: number;
-    carbsGrams?: number;
-    fatGrams?: number;
     imageUrl?: string;
   }) {
     const { data } = await http.post<{ id: number }>("/meals", payload);
+    return data;
+  },
+  async getMeals(date?: string, mealType?: string) {
+    const { data } = await http.get<Meal[]>("/meals", {
+      params: { date, mealType },
+    });
     return data;
   },
   async getMealsByLog(logId: number) {
