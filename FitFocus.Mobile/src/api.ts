@@ -75,6 +75,7 @@ export type DashboardSummary = {
 };
 
 let authToken = "";
+let onUnauthorized: (() => void) | null = null;
 
 const http = axios.create({
   baseURL: BASE_URL,
@@ -88,12 +89,25 @@ http.interceptors.request.use((config) => {
   return config;
 });
 
+http.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error?.response?.status === 401) {
+      (onUnauthorized as (() => void) | null)?.();
+    }
+    return Promise.reject(error);
+  }
+);
+
 export const api = {
   setToken(token: string) {
     authToken = token;
   },
   clearToken() {
     authToken = "";
+  },
+  setOnUnauthorized(cb: () => void) {
+    onUnauthorized = cb;
   },
   async register(email: string, password: string, fullName: string) {
     const { data } = await http.post<AuthResponse>("/auth/register", {

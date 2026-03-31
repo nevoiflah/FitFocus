@@ -1121,12 +1121,24 @@ export default function App() {
   };
 
   useEffect(() => {
+    api.setOnUnauthorized(async () => {
+      api.clearToken();
+      setSession(null);
+      await AsyncStorage.removeItem(SESSION_KEY);
+    });
+
     const bootstrap = async () => {
       const raw = await AsyncStorage.getItem(SESSION_KEY);
       if (raw) {
         const parsed = JSON.parse(raw) as Session;
         api.setToken(parsed.token);
-        setSession(parsed);
+        try {
+          await api.getProfile();
+          setSession(parsed);
+        } catch {
+          api.clearToken();
+          await AsyncStorage.removeItem(SESSION_KEY);
+        }
       }
       setLoading(false);
     };

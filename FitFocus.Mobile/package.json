@@ -3,11 +3,11 @@
   "version": "1.0.0",
   "main": "index.ts",
   "scripts": {
-    "start": "node ./scripts/start-expo.cjs",
-    "start:clean": "node ./scripts/start-expo.cjs --clear",
+    "start": "node ./scripts/start-expo.cjs --host lan",
+    "start:clean": "node ./scripts/start-expo.cjs --clear --host lan",
     "start:tunnel": "node ./scripts/start-expo.cjs --clear --tunnel",
-    "android": "node ./scripts/start-expo.cjs --android",
-    "ios": "node ./scripts/start-expo.cjs --ios",
+    "android": "node ./scripts/start-expo.cjs --android --host lan",
+    "ios": "node ./scripts/start-expo.cjs --ios --host lan",
     "web": "node ./scripts/start-expo.cjs --web"
   },
   "dependencies": {
