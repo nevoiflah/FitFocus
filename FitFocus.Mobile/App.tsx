@@ -643,12 +643,31 @@ function MealsScreen() {
     }, [today, filterDate, filterType])
   );
 
-  const pickImage = async () => {
+  const takePhoto = async () => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert("Permission", "We need camera access to take meal photos.");
+      return;
+    }
+    const result = await ImagePicker.launchCameraAsync({
+      quality: 0.7,
+    });
+    if (!result.canceled && result.assets[0].uri) {
+      setImageUrl(result.assets[0].uri);
+    }
+  };
+
+  const pickFromGallery = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert("Permission", "We need gallery access to pick meal photos.");
+      return;
+    }
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["images"],
       quality: 0.7,
     });
-    if (!result.canceled && result.assets[0]) {
+    if (!result.canceled && result.assets[0].uri) {
       setImageUrl(result.assets[0].uri);
     }
   };
@@ -764,7 +783,14 @@ function MealsScreen() {
           unit=" kcal"
         />
         <View style={{ height: 16 }} />
-        <ActionButton title="Pick meal image" onPress={pickImage} variant="secondary" />
+        <View style={{ flexDirection: "row", gap: 12 }}>
+          <View style={{ flex: 1 }}>
+            <ActionButton title="Take Photo" onPress={takePhoto} variant="secondary" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <ActionButton title="Gallery" onPress={pickFromGallery} variant="secondary" />
+          </View>
+        </View>
         {imageUrl ? (
           <View style={[styles.card, { alignItems: "center", marginTop: 10 }]}>
             <Image source={{ uri: imageUrl }} style={{ width: "100%", height: 180, borderRadius: 12 }} resizeMode="cover" />
