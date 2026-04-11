@@ -59,7 +59,14 @@ The repository is organized into two primary components:
     ```bash
     dotnet run
     ```
-    *The database tables will be automatically initialized on the first startup. Data is persistent and will not be reset on consecutive restarts.*
+    *The API now starts even if the SQL server is temporarily unavailable. Database bootstrap runs in the background, and runtime status is exposed at `GET /health`.*
+
+4.  **Optional environment overrides**:
+    ```bash
+    export FITFOCUS_DB_CONNECTION="Server=...;Database=...;User Id=...;Password=...;"
+    export FITFOCUS_ALLOWED_ORIGINS="http://localhost:8081,http://127.0.0.1:8081"
+    ```
+    *These overrides let you keep `appsettings.json` untouched while changing demo-day configuration.*
 
 ### Mobile Setup (FitFocus.Mobile)
 
@@ -68,11 +75,16 @@ The repository is organized into two primary components:
     cd FitFocus.Mobile
     npm install
     ```
-2.  **Environment Configuration**: Update `app.json` with the correct `apiBaseUrl`. If testing on a physical device, use your machine's local IP address instead of `localhost`.
+2.  **Environment Configuration**:
+    ```bash
+    export EXPO_PUBLIC_API_BASE_URL="http://YOUR-LAN-IP:5117/api"
+    ```
+    *If you skip this, `npm start` automatically injects a LAN URL based on your current machine IP.*
 3.  **Start Development Server**:
     ```bash
-    npx expo start
+    npm start
     ```
+    *The Expo wrapper prints the exact API base URL it is using and feeds that value into Expo config at startup.*
 
 ---
 
@@ -89,6 +101,19 @@ Windows usually blocks incoming connections to port **5117**.
 
 ### 3. Database Access
 The database is hosted on a remote server. If you are off-campus or not using a VPN, the connection might be blocked by the server's firewall.
+
+### 4. Health Endpoint
+Use the API health endpoint to verify the backend before opening the mobile app:
+```bash
+curl http://localhost:5117/health
+```
+If `status` is `degraded`, the API is up but the database is currently unavailable.
+
+### 5. Demo Checklist
+1. Start the API and verify `GET /health`.
+2. Start the mobile app with `npm start`.
+3. Confirm the login screen shows a healthy API connection and the expected API URL.
+4. Demo the main flow: login, daily log, meal photo, reminder, dashboard, profile.
 
 ---
 

@@ -1,38 +1,29 @@
 import React, { useState, useMemo, useCallback } from "react";
-import { View, ScrollView, Text, ActivityIndicator } from "react-native";
+import { View, ScrollView, Text, ActivityIndicator, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
-import { api, DashboardSummary, DailyLog } from "../api";
+import { api, DailyLog } from "../api";
 import { ChartBox } from "../components/ChartBox";
-import { ActionButton } from "../components/ActionButton";
 import { globalStyles } from "../styles/globalStyles";
+import { SPACING } from "../styles/theme";
+import { addDays, formatLocalDate, getTodayLocalDate, startOfLocalWeek } from "../utils/dateUtils";
 
 export const DashboardScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
-  const [summary, setSummary] = useState<DashboardSummary | null>(null);
+  const { width, height } = useWindowDimensions();
   const [history, setHistory] = useState<DailyLog[]>([]);
   const [busy, setBusy] = useState(false);
 
   const fetchData = async () => {
     try {
       setBusy(true);
-      const now = new Date();
-      const currentDay = now.getDay();
-      const sun = new Date(now);
-      sun.setDate(now.getDate() - currentDay);
-      sun.setHours(0, 0, 0, 0);
-      const sat = new Date(sun);
-      sat.setDate(sun.getDate() + 6);
-      sat.setHours(23, 59, 59, 999);
-      const from = sun.toISOString().slice(0, 10);
-      const to = sat.toISOString().slice(0, 10);
+      const sun = startOfLocalWeek(new Date());
+      const sat = addDays(sun, 6);
+      const from = formatLocalDate(sun);
+      const to = formatLocalDate(sat);
 
-      const [summaryData, historyData] = await Promise.all([
-        api.getDashboard(14),
-        api.getDailyLogRange(from, to),
-      ]);
+      const historyData = await api.getDailyLogRange(from, to);
 
-      setSummary(summaryData);
       setHistory((historyData ?? []).sort((a, b) => a.logDate.localeCompare(b.logDate)));
     } catch (err: any) {
       console.error("Dashboard error:", err);
@@ -47,23 +38,39 @@ export const DashboardScreen: React.FC = () => {
     }, []),
   );
 
-  const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
+  const today = useMemo(() => getTodayLocalDate(), []);
   const todayData = useMemo(() => {
     return history.find((h) => h.logDate === today);
   }, [history, today]);
+  const gridContentWidth = useMemo(() => Math.min(width - SPACING.lg * 2, 760), [width]);
+  const chartColumnWidth = useMemo(() => Math.min(gridContentWidth, 620), [gridContentWidth]);
+  const chartWidth = Math.max(260, chartColumnWidth - SPACING.lg * 2 - 18);
+  const contentMinHeight = Math.max(0, height - insets.top - insets.bottom - SPACING.lg * 2);
+  const weekDays = useMemo(() => ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"], []);
+  const todayDayLabel = useMemo(() => weekDays[new Date().getDay()], [weekDays]);
+  const weekEntries = useMemo(() => {
+    const sun = startOfLocalWeek(new Date());
+
+    return weekDays.map((dayLabel, index) => {
+      const logDate = formatLocalDate(addDays(sun, index));
+      const entry = history.find((item) => item.logDate === logDate);
+      return {
+        dayLabel,
+        logDate,
+        symptoms: entry?.symptoms?.trim() ?? "",
+        notes: entry?.notes?.trim() ?? "",
+        hasLog: Boolean(entry),
+        isToday: logDate === today,
+      };
+    });
+  }, [history, today, weekDays]);
 
   const getChartData = (key: keyof DailyLog, color: string) => {
-    const daysArr = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
     const labels = ["S", "M", "T", "W", "T", "F", "S"];
-    const now = new Date();
-    const sun = new Date(now);
-    sun.setDate(now.getDate() - now.getDay());
-    sun.setHours(0, 0, 0, 0);
+    const sun = startOfLocalWeek(new Date());
 
-    const weeklyData = daysArr.map((_, i) => {
-      const d = new Date(sun);
-      d.setDate(sun.getDate() + i);
-      const dStr = d.toISOString().slice(0, 10);
+    const weeklyData = labels.map((_, i) => {
+      const dStr = formatLocalDate(addDays(sun, i));
       const entry = history.find((h) => h.logDate === dStr);
       return entry ? Number(entry[key]) || 0 : 0;
     });
@@ -80,58 +87,136 @@ export const DashboardScreen: React.FC = () => {
     };
   };
 
+  const chartCards = [
+    {
+      key: "mood",
+      title: "Mood",
+      value: todayData?.moodScore ?? "-",
+      unit: "/10",
+      data: getChartData("moodScore", "rgba(76, 111, 255, "),
+      color: "rgba(76, 111, 255, ",
+    },
+    {
+      key: "sleep",
+      title: "Sleep",
+      value: todayData?.sleepHours ?? "-",
+      unit: "h",
+      data: getChartData("sleepHours", "rgba(16, 185, 129, "),
+      color: "rgba(16, 185, 129, ",
+    },
+    {
+      key: "stress",
+      title: "Stress",
+      value: todayData?.stressScore ?? "-",
+      unit: "/10",
+      data: getChartData("stressScore", "rgba(244, 63, 94, "),
+      color: "rgba(244, 63, 94, ",
+    },
+    {
+      key: "water",
+      title: "Water",
+      value: todayData?.waterLiters ? Number(todayData.waterLiters).toFixed(1) : "-",
+      unit: "L",
+      data: getChartData("waterLiters", "rgba(6, 182, 212, "),
+      color: "rgba(6, 182, 212, ",
+    },
+  ];
+  const textCards = [
+    {
+      key: "symptoms",
+      title: "Symptoms This Week",
+      emptyLabel: "No symptoms added",
+      getValue: (entry: (typeof weekEntries)[number]) => entry.symptoms,
+    },
+    {
+      key: "notes",
+      title: "Notes This Week",
+      emptyLabel: "No notes added",
+      getValue: (entry: (typeof weekEntries)[number]) => entry.notes,
+    },
+  ];
+
   return (
     <View style={globalStyles.screen}>
       <ScrollView
         style={globalStyles.screen}
         contentContainerStyle={[
           globalStyles.screenContent,
-          { paddingTop: insets.top + 24, paddingBottom: insets.bottom },
+          { flexGrow: 1, paddingTop: insets.top + 12, paddingBottom: insets.bottom + SPACING.xl },
         ]}
       >
-        <Text style={globalStyles.title}>Dashboard</Text>
-        {busy && <ActivityIndicator style={{ marginBottom: 10 }} />}
+        <View
+          style={{
+            minHeight: contentMinHeight,
+            justifyContent: "center",
+          }}
+        >
+          <View style={{ width: "100%", maxWidth: gridContentWidth, alignSelf: "center" }}>
+            <Text style={[globalStyles.title, { marginBottom: 0 }]}>Dashboard</Text>
+            {busy && <ActivityIndicator style={{ marginTop: 12, marginBottom: 4 }} />}
 
-        <View style={{ gap: 24 }}>
-          <View>
-            <Text style={globalStyles.chartSectionTitle}>Mood</Text>
-            <ChartBox
-              value={todayData?.moodScore ?? "-"}
-              unit="/10"
-              data={getChartData("moodScore", "rgba(76, 111, 255, ")}
-              color="rgba(76, 111, 255, "
-            />
-          </View>
-          <View>
-            <Text style={globalStyles.chartSectionTitle}>Sleep</Text>
-            <ChartBox
-              value={todayData?.sleepHours ?? "-"}
-              unit="h"
-              data={getChartData("sleepHours", "rgba(16, 185, 129, ")}
-              color="rgba(16, 185, 129, "
-            />
-          </View>
-          <View>
-            <Text style={globalStyles.chartSectionTitle}>Stress</Text>
-            <ChartBox
-              value={todayData?.stressScore ?? "-"}
-              unit="/10"
-              data={getChartData("stressScore", "rgba(244, 63, 94, ")}
-              color="rgba(244, 63, 94, "
-            />
-          </View>
-          <View>
-            <Text style={globalStyles.chartSectionTitle}>Water</Text>
-            <ChartBox
-              value={todayData?.waterLiters ? Number(todayData.waterLiters).toFixed(1) : "-"}
-              unit="L"
-              data={getChartData("waterLiters", "rgba(6, 182, 212, ")}
-              color="rgba(6, 182, 212, "
-            />
+            <View
+              style={{
+                marginTop: 22,
+                width: chartColumnWidth,
+                alignSelf: "center",
+                gap: 18,
+              }}
+            >
+              {chartCards.map((chart) => (
+                <View key={chart.key} style={{ width: "100%" }}>
+                  <Text style={[globalStyles.chartSectionTitle, { fontSize: 16, marginBottom: 6, marginLeft: 2 }]}>
+                    {chart.title}
+                  </Text>
+                  <ChartBox
+                    value={chart.value}
+                    unit={chart.unit}
+                    data={chart.data}
+                    color={chart.color}
+                    chartWidth={chartWidth}
+                    chartHeight={170}
+                    todayDayLabel={todayDayLabel}
+                  />
+                </View>
+              ))}
+            </View>
+
+            <View style={{ marginTop: 28, gap: 16 }}>
+              {textCards.map((card) => (
+                <View key={card.key}>
+                  <Text style={[globalStyles.chartSectionTitle, { fontSize: 17, marginBottom: 8, marginLeft: 2 }]}>
+                    {card.title}
+                  </Text>
+                  <View style={globalStyles.weeklyTextCard}>
+                    {weekEntries.map((entry, index) => {
+                      const value = card.getValue(entry);
+                      const displayText = value || (entry.hasLog ? card.emptyLabel : "No daily log");
+
+                      return (
+                        <View
+                          key={`${card.key}-${entry.logDate}`}
+                          style={[
+                            globalStyles.weeklyTextRow,
+                            index === weekEntries.length - 1 && { borderBottomWidth: 0, paddingBottom: 0 },
+                            index === 0 && { paddingTop: 0 },
+                          ]}
+                        >
+                          <View style={globalStyles.weeklyTextDayRow}>
+                            <Text style={globalStyles.weeklyTextDay}>{entry.dayLabel}</Text>
+                            {entry.isToday && <Text style={globalStyles.weeklyTextTodayBadge}>Today</Text>}
+                          </View>
+                          <Text style={[globalStyles.weeklyTextBody, !value && globalStyles.weeklyTextMuted]}>
+                            {displayText}
+                          </Text>
+                        </View>
+                      );
+                    })}
+                  </View>
+                </View>
+              ))}
+            </View>
           </View>
         </View>
-
-        <ActionButton title="Refresh Data" onPress={fetchData} />
         <View style={{ height: 40 }} />
       </ScrollView>
     </View>

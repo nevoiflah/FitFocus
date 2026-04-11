@@ -12,6 +12,7 @@ import { SliderInput } from "../components/SliderInput";
 import { ActionButton } from "../components/ActionButton";
 import { globalStyles } from "../styles/globalStyles";
 import { extractErrorMessage } from "../utils/errorUtils";
+import { getTodayLocalDate } from "../utils/dateUtils";
 
 export const MealsScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
@@ -27,7 +28,7 @@ export const MealsScreen: React.FC = () => {
   const [filterType, setFilterType] = useState("Any");
   const [showDatePanel, setShowDatePanel] = useState(false);
 
-  const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
+  const today = useMemo(() => getTodayLocalDate(), []);
 
   const loadHistory = async () => {
     try {
@@ -138,7 +139,7 @@ export const MealsScreen: React.FC = () => {
       loadHistory();
       refreshAvailableDates();
     } catch (err) {
-      Alert.alert("Error", extractErrorMessage(err, "Could not create meal."));
+      Alert.alert("Error", extractErrorMessage(err, "Could not create meal.", { apiBaseUrl: api.getBaseUrl() }));
     } finally {
       setBusy(false);
     }
@@ -155,7 +156,7 @@ export const MealsScreen: React.FC = () => {
             await api.deleteMeal(id);
             setList((prev) => prev.filter((m) => m.id !== id));
           } catch (err) {
-            Alert.alert("Error", extractErrorMessage(err, "Could not delete meal."));
+            Alert.alert("Error", extractErrorMessage(err, "Could not delete meal.", { apiBaseUrl: api.getBaseUrl() }));
           }
         },
       },

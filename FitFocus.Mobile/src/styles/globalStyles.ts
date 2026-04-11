@@ -195,6 +195,52 @@ export const globalStyles = StyleSheet.create({
     marginBottom: 10,
     marginLeft: 4,
   },
+  weeklyTextCard: {
+    backgroundColor: COLORS.white,
+    borderRadius: BORDER_RADIUS.xxl,
+    padding: SPACING.lg,
+    borderWidth: 1,
+    borderColor: "#e4ebff",
+    shadowColor: COLORS.shadow,
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
+  },
+  weeklyTextRow: {
+    paddingVertical: SPACING.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: "#eef2ff",
+  },
+  weeklyTextDayRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: SPACING.sm,
+    marginBottom: 4,
+  },
+  weeklyTextDay: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#4d6090",
+  },
+  weeklyTextTodayBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: BORDER_RADIUS.full,
+    backgroundColor: "#e0e7ff",
+    color: COLORS.primary,
+    fontSize: 10,
+    fontWeight: "700",
+  },
+  weeklyTextBody: {
+    fontSize: 13,
+    lineHeight: 19,
+    color: COLORS.textSub,
+  },
+  weeklyTextMuted: {
+    color: COLORS.textMuted,
+    fontStyle: "italic",
+  },
   chip: {
     paddingHorizontal: SPACING.lg,
     paddingVertical: SPACING.sm,
@@ -215,5 +261,49 @@ export const globalStyles = StyleSheet.create({
   },
   chipTextActive: {
     color: COLORS.white,
+  },
+  statusCard: {
+    borderRadius: BORDER_RADIUS.lg,
+    borderWidth: 1,
+    padding: SPACING.md,
+    marginBottom: SPACING.lg,
+  },
+  statusCardInfo: {
+    backgroundColor: "#f8fbff",
+    borderColor: "#d9ebff",
+  },
+  statusCardSuccess: {
+    backgroundColor: "#ecfdf5",
+    borderColor: "#a7f3d0",
+  },
+  statusCardWarning: {
+    backgroundColor: "#fffbeb",
+    borderColor: "#fcd34d",
+  },
+  statusCardDanger: {
+    backgroundColor: "#fff1f2",
+    borderColor: "#fecdd3",
+  },
+  statusHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: SPACING.sm,
+    gap: SPACING.sm,
+  },
+  statusTitle: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: COLORS.textHeader,
+  },
+  statusMeta: {
+    fontSize: 12,
+    color: COLORS.textSub,
+  },
+  statusBody: {
+    fontSize: 13,
+    lineHeight: 18,
+    color: COLORS.textSub,
+    marginBottom: SPACING.md,
   },
 });

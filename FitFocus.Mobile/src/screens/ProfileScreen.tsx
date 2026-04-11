@@ -47,7 +47,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
       setWeightKg(profile.weightKg ? Number(profile.weightKg) : 70);
       setGender(profile.gender ?? "Other");
     } catch (err) {
-      Alert.alert("Error", extractErrorMessage(err, "Could not load profile."));
+      Alert.alert("Error", extractErrorMessage(err, "Could not load profile.", { apiBaseUrl: api.getBaseUrl() }));
     }
   };
 
@@ -71,7 +71,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
       });
       Alert.alert("Saved", "Profile updated.");
     } catch (err) {
-      Alert.alert("Error", extractErrorMessage(err, "Could not update profile."));
+      Alert.alert("Error", extractErrorMessage(err, "Could not update profile.", { apiBaseUrl: api.getBaseUrl() }));
     }
   };
 
@@ -86,7 +86,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
       const sentText = `Sent ${res.sent}/${res.total}`;
       Alert.alert("Push sent", res.sent > 0 ? sentText : `${sentText}\nNo push accepted by Expo.`);
     } catch (error: any) {
-      Alert.alert("Push error", extractErrorMessage(error, "Could not send test push."));
+      Alert.alert("Push error", extractErrorMessage(error, "Could not send test push.", { apiBaseUrl: api.getBaseUrl() }));
     }
   };
 

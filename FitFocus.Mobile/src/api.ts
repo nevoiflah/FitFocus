@@ -5,13 +5,54 @@ import { Platform } from "react-native";
 const hostUri = Constants.expoConfig?.hostUri?.split(":")[0];
 const configuredBaseUrl = (Constants.expoConfig?.extra ?? {})?.apiBaseUrl;
 
-const getBaseUrl = () => {
-  if (hostUri) return `http://${hostUri}:5117/api`;
-  if (configuredBaseUrl) return configuredBaseUrl;
-  return Platform.OS === "android" ? "http://10.0.2.2:5117/api" : "http://localhost:5117/api";
+type BaseUrlSource = "expo-host" | "app-config" | "android-emulator" | "localhost";
+
+export type ApiHealth = {
+  status: "ok" | "degraded";
+  startedAtUtc: string;
+  database: {
+    ready: boolean;
+    checkedAtUtc?: string | null;
+    message: string;
+  };
 };
 
-const BASE_URL = getBaseUrl();
+const normalizeApiBaseUrl = (value: string) => {
+  const trimmed = value.trim().replace(/\/+$/, "");
+  return trimmed.endsWith("/api") ? trimmed : `${trimmed}/api`;
+};
+
+const resolveBaseUrl = (): { url: string; source: BaseUrlSource } => {
+  if (configuredBaseUrl) {
+    return {
+      url: normalizeApiBaseUrl(configuredBaseUrl),
+      source: "app-config",
+    };
+  }
+
+  if (hostUri) {
+    return {
+      url: normalizeApiBaseUrl(`http://${hostUri}:5117`),
+      source: "expo-host",
+    };
+  }
+
+  if (Platform.OS === "android") {
+    return {
+      url: "http://10.0.2.2:5117/api",
+      source: "android-emulator",
+    };
+  }
+
+  return {
+    url: "http://localhost:5117/api",
+    source: "localhost",
+  };
+};
+
+const BASE_URL_INFO = resolveBaseUrl();
+const BASE_URL = BASE_URL_INFO.url;
+const API_ROOT_URL = BASE_URL.replace(/\/api$/, "");
 
 export type AuthResponse = {
   token: string;
@@ -73,7 +114,7 @@ export type DashboardSummary = {
 };
 
 let authToken = "";
-let onUnauthorized: (() => void) | null = null;
+let onUnauthorized: (() => void | Promise<void>) | null = null;
 
 const http = axios.create({
   baseURL: BASE_URL,
@@ -91,7 +132,7 @@ http.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error?.response?.status === 401) {
-      (onUnauthorized as (() => void) | null)?.();
+      void onUnauthorized?.();
     }
     return Promise.reject(error);
   }
@@ -104,8 +145,14 @@ export const api = {
   clearToken() {
     authToken = "";
   },
-  setOnUnauthorized(cb: () => void) {
+  setOnUnauthorized(cb: () => void | Promise<void>) {
     onUnauthorized = cb;
+  },
+  async getHealth() {
+    const { data } = await axios.get<ApiHealth>(`${API_ROOT_URL}/health`, {
+      timeout: 5000,
+    });
+    return data;
   },
   async register(email: string, password: string, fullName: string) {
     const { data } = await http.post<AuthResponse>("/auth/register", {
@@ -212,5 +259,8 @@ export const api = {
   },
   getBaseUrl() {
     return BASE_URL;
+  },
+  getBaseUrlSource() {
+    return BASE_URL_INFO.source;
   },
 };

@@ -27,7 +27,9 @@ for (const interfaceName in networkInterfaces) {
 }
 env.EXPO_PACKAGER_HOSTNAME = localIp;
 env.REACT_NATIVE_PACKAGER_HOSTNAME = localIp;
+env.EXPO_PUBLIC_API_BASE_URL = env.EXPO_PUBLIC_API_BASE_URL || `http://${localIp}:5117/api`;
 console.log(`››› FORCING EXPO TO USE IP: ${localIp} ‹‹‹`);
+console.log(`››› USING API BASE URL: ${env.EXPO_PUBLIC_API_BASE_URL} ‹‹‹`);
 
 
 const expoCli = path.join(process.cwd(), "node_modules", ".bin", "expo");

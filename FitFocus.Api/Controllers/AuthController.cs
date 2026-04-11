@@ -51,6 +51,12 @@ public sealed class AuthController(
             return Unauthorized("Invalid email or password.");
         }
 
+        if (passwordService.NeedsRehash(user.PasswordHash))
+        {
+            await users.UpdatePasswordHashAsync(user.Id, passwordService.HashPassword(request.Password));
+            user = await users.GetByIdAsync(user.Id) ?? user;
+        }
+
         var token = tokenService.Generate(user);
         return Ok(ToAuthResponse(user, token));
     }

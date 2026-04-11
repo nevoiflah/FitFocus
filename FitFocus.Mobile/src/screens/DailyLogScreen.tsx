@@ -7,10 +7,11 @@ import { InputField } from "../components/InputField";
 import { ActionButton } from "../components/ActionButton";
 import { globalStyles } from "../styles/globalStyles";
 import { extractErrorMessage } from "../utils/errorUtils";
+import { getTodayLocalDate } from "../utils/dateUtils";
 
 export const DailyLogScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
-  const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
+  const today = useMemo(() => getTodayLocalDate(), []);
   const [mood, setMood] = useState(7);
   const [sleep, setSleep] = useState(7);
   const [stress, setStress] = useState(5);
@@ -55,7 +56,9 @@ export const DailyLogScreen: React.FC = () => {
     } catch (error: any) {
       Alert.alert(
         "Could not save",
-        extractErrorMessage(error, "If a log exists, edit support can be added next.")
+        extractErrorMessage(error, "If a log exists, edit support can be added next.", {
+          apiBaseUrl: api.getBaseUrl(),
+        })
       );
     } finally {
       setBusy(false);

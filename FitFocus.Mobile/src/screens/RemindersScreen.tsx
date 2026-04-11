@@ -23,7 +23,7 @@ export const RemindersScreen: React.FC<RemindersScreenProps> = ({ notificationsE
     try {
       setItems(await api.getReminders());
     } catch (err) {
-      Alert.alert("Error", extractErrorMessage(err, "Could not load reminders."));
+      Alert.alert("Error", extractErrorMessage(err, "Could not load reminders.", { apiBaseUrl: api.getBaseUrl() }));
     }
   };
 
@@ -53,7 +53,7 @@ export const RemindersScreen: React.FC<RemindersScreenProps> = ({ notificationsE
       setDosage("");
       await load();
     } catch (error: any) {
-      Alert.alert("Error", extractErrorMessage(error, "Could not save reminder."));
+      Alert.alert("Error", extractErrorMessage(error, "Could not save reminder.", { apiBaseUrl: api.getBaseUrl() }));
     }
   };
 

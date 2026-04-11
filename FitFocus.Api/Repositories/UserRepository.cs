@@ -114,6 +114,23 @@ public sealed class UserRepository(ISqlConnectionFactory connectionFactory) : IU
         await command.ExecuteNonQueryAsync();
     }
 
+    public async Task UpdatePasswordHashAsync(int userId, string passwordHash)
+    {
+        const string sql = """
+            UPDATE dbo.FitFocus_UsersApp
+            SET PasswordHash = @PasswordHash,
+                UpdatedAt = SYSUTCDATETIME()
+            WHERE Id = @Id
+            """;
+
+        await using var connection = connectionFactory.CreateConnection();
+        await using var command = new SqlCommand(sql, connection);
+        command.Parameters.AddWithValue("@Id", userId);
+        command.Parameters.AddWithValue("@PasswordHash", passwordHash);
+        await connection.OpenAsync();
+        await command.ExecuteNonQueryAsync();
+    }
+
     private static User MapUser(SqlDataReader reader)
     {
         return new User

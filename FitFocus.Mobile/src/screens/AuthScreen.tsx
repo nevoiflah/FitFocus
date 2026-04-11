@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Alert,
   ActivityIndicator,
@@ -26,6 +26,37 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated }) => {
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [busy, setBusy] = useState(false);
+  const [checkingConnection, setCheckingConnection] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState<"checking" | "online" | "degraded" | "offline">("checking");
+  const [connectionMessage, setConnectionMessage] = useState("Checking API connectivity...");
+
+  const checkConnection = async () => {
+    try {
+      setCheckingConnection(true);
+      setConnectionStatus("checking");
+      setConnectionMessage("Checking API connectivity...");
+
+      const health = await api.getHealth();
+      if (health.database.ready) {
+        setConnectionStatus("online");
+        setConnectionMessage("API and database are reachable. The demo flow is ready.");
+      } else {
+        setConnectionStatus("degraded");
+        setConnectionMessage(health.database.message || "API is reachable, but the database is currently unavailable.");
+      }
+    } catch {
+      setConnectionStatus("offline");
+      setConnectionMessage(
+        `Cannot reach ${api.getBaseUrl()}. Start FitFocus.Api and make sure this device can access your computer.`
+      );
+    } finally {
+      setCheckingConnection(false);
+    }
+  };
+
+  useEffect(() => {
+    checkConnection();
+  }, []);
 
   const submit = async () => {
     if (!email || !password || (isRegister && !fullName)) {
@@ -39,11 +70,14 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated }) => {
         : await api.login(email.trim(), password);
       onAuthenticated(data);
     } catch (error: any) {
-      const networkMessage =
-        error?.code === "ERR_NETWORK" || !error?.response
-          ? "Cannot reach server. Make sure FitFocus.Api is running and phone+computer are on same Wi-Fi."
-          : null;
-      Alert.alert("Authentication failed", networkMessage ?? extractErrorMessage(error, "Try again."));
+      Alert.alert(
+        "Authentication failed",
+        extractErrorMessage(error, "Try again.", {
+          apiBaseUrl: api.getBaseUrl(),
+          offlineHint:
+            "Cannot reach server. Make sure FitFocus.Api is running and phone+computer are on the same network.",
+        })
+      );
     } finally {
       setBusy(false);
     }
@@ -64,6 +98,35 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated }) => {
           <View style={globalStyles.authCard}>
             <Text style={globalStyles.title}>FitFocus</Text>
             <Text style={globalStyles.subtitle}>Personal health and risk tracking</Text>
+            <View
+              style={[
+                globalStyles.statusCard,
+                connectionStatus === "online"
+                  ? globalStyles.statusCardSuccess
+                  : connectionStatus === "degraded"
+                    ? globalStyles.statusCardWarning
+                    : connectionStatus === "offline"
+                      ? globalStyles.statusCardDanger
+                      : globalStyles.statusCardInfo,
+              ]}
+            >
+              <View style={globalStyles.statusHeader}>
+                <View style={{ flex: 1 }}>
+                  <Text style={globalStyles.statusTitle}>API Connection</Text>
+                  <Text style={globalStyles.statusMeta}>
+                    {api.getBaseUrl()} ({api.getBaseUrlSource()})
+                  </Text>
+                </View>
+                {checkingConnection ? <ActivityIndicator size="small" color="#4c6fff" /> : null}
+              </View>
+              <Text style={globalStyles.statusBody}>{connectionMessage}</Text>
+              <ActionButton
+                title={checkingConnection ? "Checking..." : "Recheck API"}
+                onPress={checkConnection}
+                variant="secondary"
+                disabled={checkingConnection}
+              />
+            </View>
             {isRegister ? (
               <InputField
                 label="Full Name"

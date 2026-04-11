@@ -31,3 +31,17 @@ dotnet run
 ```
 
 Swagger will be available in development mode.
+
+## Reliability notes
+
+- The API no longer hard-fails startup when the SQL server is temporarily unavailable.
+- Database bootstrap runs in the background after the app starts.
+- Health is exposed at `GET /health`.
+- You can override the SQL connection without editing tracked settings files:
+
+```bash
+export FITFOCUS_DB_CONNECTION="Server=...;Database=...;User Id=...;Password=...;"
+export FITFOCUS_ALLOWED_ORIGINS="http://localhost:8081,http://127.0.0.1:8081"
+```
+
+If the health endpoint reports `degraded`, the API is running but the database is currently unavailable.
