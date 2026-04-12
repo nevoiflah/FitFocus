@@ -82,6 +82,33 @@ public sealed class MealRepository(ISqlConnectionFactory connectionFactory) : IM
         return results;
     }
 
+    public async Task<List<MealEntry>> GetRangeAsync(int userId, DateOnly from, DateOnly to)
+    {
+        const string sql = """
+            SELECT Id, UserId, DailyLogId, LogDate, MealType, MealName, Calories, ImageUrl
+            FROM dbo.FitFocus_MealsApp
+            WHERE UserId = @UserId
+              AND LogDate BETWEEN @From AND @To
+            ORDER BY LogDate ASC, Id ASC
+            """;
+
+        var results = new List<MealEntry>();
+        await using var connection = connectionFactory.CreateConnection();
+        await using var command = new SqlCommand(sql, connection);
+        command.Parameters.AddWithValue("@UserId", userId);
+        command.Parameters.AddWithValue("@From", from.ToDateTime(TimeOnly.MinValue));
+        command.Parameters.AddWithValue("@To", to.ToDateTime(TimeOnly.MinValue));
+
+        await connection.OpenAsync();
+        await using var reader = await command.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+        {
+            results.Add(MapReaderToMeal(reader));
+        }
+
+        return results;
+    }
+
     private static MealEntry MapReaderToMeal(SqlDataReader reader)
     {
         return new MealEntry

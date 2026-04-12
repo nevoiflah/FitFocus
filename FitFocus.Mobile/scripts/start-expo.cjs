@@ -32,10 +32,10 @@ console.log(`››› FORCING EXPO TO USE IP: ${localIp} ‹‹‹`);
 console.log(`››› USING API BASE URL: ${env.EXPO_PUBLIC_API_BASE_URL} ‹‹‹`);
 
 
-const expoCli = path.join(process.cwd(), "node_modules", ".bin", "expo");
+const expoCli = path.join(process.cwd(), "node_modules", "expo", "bin", "cli");
 // We use --host lan because Expo validates this flag against a list (lan, tunnel, localhost)
 // But it will respect the EXPO_PACKAGER_HOSTNAME env var we set above.
-const child = spawn(expoCli, ["start", "--host", "lan", ...args], {
+const child = spawn(process.execPath, [expoCli, "start", "--host", "lan", ...args], {
   stdio: "inherit",
   env,
 });

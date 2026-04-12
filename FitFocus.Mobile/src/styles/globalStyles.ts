@@ -1,4 +1,4 @@
-import { StyleSheet, Platform } from "react-native";
+import { StyleSheet } from "react-native";
 import { COLORS, SPACING, BORDER_RADIUS } from "./theme";
 
 export const globalStyles = StyleSheet.create({
@@ -84,6 +84,108 @@ export const globalStyles = StyleSheet.create({
     shadowOffset: { width: 0, height: 3 },
     elevation: 2,
   },
+  sectionCard: {
+    backgroundColor: COLORS.white,
+    borderRadius: BORDER_RADIUS.xxl,
+    borderWidth: 1,
+    borderColor: "#dbe5ff",
+    padding: SPACING.lg,
+    marginBottom: SPACING.lg,
+    shadowColor: COLORS.shadow,
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 3,
+  },
+  sectionHeader: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: SPACING.md,
+    marginBottom: SPACING.md,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: COLORS.textHeader,
+    marginBottom: 4,
+  },
+  sectionDescription: {
+    fontSize: 13,
+    lineHeight: 19,
+    color: COLORS.textSub,
+  },
+  sectionLabel: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: COLORS.textHeader,
+    marginBottom: SPACING.sm,
+  },
+  profileHeroCard: {
+    backgroundColor: COLORS.white,
+    borderRadius: BORDER_RADIUS.xxl,
+    borderWidth: 1,
+    borderColor: "#dbe5ff",
+    padding: SPACING.xl,
+    marginBottom: SPACING.lg,
+    gap: SPACING.md,
+    shadowColor: COLORS.shadow,
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 5 },
+    elevation: 4,
+  },
+  profileHeroTopRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: SPACING.md,
+  },
+  profileName: {
+    fontSize: 22,
+    fontWeight: "700",
+    color: COLORS.textHeader,
+    marginBottom: 4,
+  },
+  profileEmail: {
+    fontSize: 14,
+    color: COLORS.textSub,
+  },
+  roleBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: BORDER_RADIUS.full,
+    borderWidth: 1,
+  },
+  roleBadgeAdmin: {
+    backgroundColor: "#f3e8ff",
+    borderColor: "#d8b4fe",
+  },
+  roleBadgeUser: {
+    backgroundColor: "#eff6ff",
+    borderColor: "#bfdbfe",
+  },
+  roleBadgeText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: COLORS.primary,
+  },
+  roleBadgeTextAdmin: {
+    color: "#7c3aed",
+  },
+  inlinePillAction: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: BORDER_RADIUS.full,
+    backgroundColor: "#eef2ff",
+    borderWidth: 1,
+    borderColor: "#cdd9ff",
+  },
+  inlinePillActionText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: COLORS.primary,
+  },
   buttonBase: {
     borderRadius: BORDER_RADIUS.lg,
     paddingVertical: SPACING.md,
@@ -121,11 +223,52 @@ export const globalStyles = StyleSheet.create({
   buttonTextSecondary: {
     color: "#334a8a",
   },
+  buttonRow: {
+    flexDirection: "row",
+    gap: SPACING.sm,
+    marginTop: SPACING.md,
+  },
+  halfButton: {
+    flex: 1,
+  },
   labelRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     marginBottom: SPACING.sm,
+  },
+  detailRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: SPACING.md,
+    paddingVertical: SPACING.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: "#eef2ff",
+  },
+  detailLabel: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: COLORS.inputLabel,
+  },
+  detailValue: {
+    flex: 1,
+    fontSize: 14,
+    color: COLORS.inputText,
+    textAlign: "right",
+    fontWeight: "600",
+  },
+  preferenceRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: SPACING.md,
+  },
+  preferenceHint: {
+    fontSize: 12,
+    lineHeight: 18,
+    color: COLORS.textSub,
+    marginTop: 4,
   },
   segmentedContainer: {
     flexDirection: "row",
@@ -262,48 +405,81 @@ export const globalStyles = StyleSheet.create({
   chipTextActive: {
     color: COLORS.white,
   },
-  statusCard: {
-    borderRadius: BORDER_RADIUS.lg,
-    borderWidth: 1,
-    padding: SPACING.md,
-    marginBottom: SPACING.lg,
-  },
-  statusCardInfo: {
-    backgroundColor: "#f8fbff",
-    borderColor: "#d9ebff",
-  },
-  statusCardSuccess: {
-    backgroundColor: "#ecfdf5",
-    borderColor: "#a7f3d0",
-  },
-  statusCardWarning: {
-    backgroundColor: "#fffbeb",
-    borderColor: "#fcd34d",
-  },
-  statusCardDanger: {
-    backgroundColor: "#fff1f2",
-    borderColor: "#fecdd3",
-  },
-  statusHeader: {
+  statsGrid: {
     flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: SPACING.sm,
+    flexWrap: "wrap",
     gap: SPACING.sm,
+    marginBottom: SPACING.md,
   },
-  statusTitle: {
-    fontSize: 14,
+  statCard: {
+    flexBasis: "48%",
+    flexGrow: 1,
+    backgroundColor: "#f8fbff",
+    borderRadius: BORDER_RADIUS.xl,
+    borderWidth: 1,
+    borderColor: "#dbe5ff",
+    padding: SPACING.md,
+  },
+  statValue: {
+    fontSize: 24,
     fontWeight: "700",
     color: COLORS.textHeader,
+    marginBottom: 4,
   },
-  statusMeta: {
+  statLabel: {
     fontSize: 12,
     color: COLORS.textSub,
+    fontWeight: "600",
   },
-  statusBody: {
+  listItemHeader: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: SPACING.md,
+    marginBottom: SPACING.sm,
+  },
+  cardTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: COLORS.textHeader,
+    marginBottom: 2,
+  },
+  cardMeta: {
     fontSize: 13,
     lineHeight: 18,
     color: COLORS.textSub,
-    marginBottom: SPACING.md,
+  },
+  reminderTimeBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: BORDER_RADIUS.full,
+    backgroundColor: "#eef2ff",
+    borderWidth: 1,
+    borderColor: "#dbe5ff",
+  },
+  reminderTimeText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: COLORS.primary,
+  },
+  reminderActionColumn: {
+    alignItems: "center",
+    gap: SPACING.sm,
+  },
+  reminderDeleteIconAction: {
+    paddingVertical: 2,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  emptyStateText: {
+    fontSize: 13,
+    lineHeight: 20,
+    color: COLORS.textSub,
+  },
+  loadingText: {
+    fontSize: 13,
+    color: COLORS.textSub,
+    textAlign: "center",
+    marginTop: SPACING.sm,
   },
 });

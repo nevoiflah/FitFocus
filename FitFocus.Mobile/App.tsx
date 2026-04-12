@@ -6,12 +6,10 @@ import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
 import { StatusBar } from "expo-status-bar";
+import * as Notifications from "expo-notifications";
 
-// API & Types
 import { api } from "./src/api";
 import { Session } from "./src/types";
-
-// Screens
 import { AuthScreen } from "./src/screens/AuthScreen";
 import { DashboardScreen } from "./src/screens/DashboardScreen";
 import { DailyLogScreen } from "./src/screens/DailyLogScreen";
@@ -19,17 +17,17 @@ import { MealsScreen } from "./src/screens/MealsScreen";
 import { RemindersScreen } from "./src/screens/RemindersScreen";
 import { ProfileScreen } from "./src/screens/ProfileScreen";
 import { AdminScreen } from "./src/screens/AdminScreen";
-
-// Utilities & Styles
-import { setupNotifications, ensurePushReady } from "./src/utils/notificationUtils";
+import {
+  setupNotifications,
+  ensurePushReady,
+  clearStoredReminderNotifications,
+} from "./src/utils/notificationUtils";
 import { globalStyles } from "./src/styles/globalStyles";
-import * as Notifications from "expo-notifications";
 
 const Stack = createNativeStackNavigator();
 const Tabs = createBottomTabNavigator();
 const SESSION_KEY = "fitfocus_session";
 
-// Initialize notification handler
 setupNotifications();
 
 export default function App() {
@@ -49,6 +47,18 @@ export default function App() {
     await AsyncStorage.removeItem(SESSION_KEY);
   };
 
+  const syncSessionFullName = (fullName: string) => {
+    setSession((current) => {
+      if (!current) {
+        return current;
+      }
+
+      const next = { ...current, fullName };
+      void AsyncStorage.setItem(SESSION_KEY, JSON.stringify(next));
+      return next;
+    });
+  };
+
   useEffect(() => {
     api.setOnUnauthorized(async () => {
       api.clearToken();
@@ -62,8 +72,16 @@ export default function App() {
         const parsed = JSON.parse(raw) as Session;
         api.setToken(parsed.token);
         try {
-          await api.getProfile();
-          setSession(parsed);
+          const profile = await api.getProfile();
+          const refreshedSession: Session = {
+            ...parsed,
+            userId: profile.id,
+            email: profile.email,
+            fullName: profile.fullName,
+            role: profile.role,
+          };
+          setSession(refreshedSession);
+          await AsyncStorage.setItem(SESSION_KEY, JSON.stringify(refreshedSession));
         } catch {
           api.clearToken();
           await AsyncStorage.removeItem(SESSION_KEY);
@@ -72,7 +90,7 @@ export default function App() {
       setLoading(false);
     };
 
-    bootstrap();
+    void bootstrap();
   }, []);
 
   useEffect(() => {
@@ -81,12 +99,13 @@ export default function App() {
       await ensurePushReady(notificationsEnabled);
     };
 
-    syncDeviceToken();
+    void syncDeviceToken();
   }, [session, notificationsEnabled]);
 
   useEffect(() => {
     if (!notificationsEnabled) {
-      Notifications.cancelAllScheduledNotificationsAsync();
+      void Notifications.cancelAllScheduledNotificationsAsync();
+      void clearStoredReminderNotifications();
     }
   }, [notificationsEnabled]);
 
@@ -107,53 +126,57 @@ export default function App() {
             {(props) => <AuthScreen {...props} onAuthenticated={setAuthenticated} />}
           </Stack.Screen>
         ) : (
-          <Stack.Screen name="Main">
-            {() => (
-              <Tabs.Navigator
-                screenOptions={({ route }) => ({
-                  headerShown: false,
-                  tabBarIcon: ({ focused, color, size }) => {
-                    let iconName: any;
-                    if (route.name === "Dashboard") iconName = focused ? "stats-chart" : "stats-chart-outline";
-                    else if (route.name === "Daily Log") iconName = focused ? "calendar" : "calendar-outline";
-                    else if (route.name === "Meals") iconName = focused ? "fast-food" : "fast-food-outline";
-                    else if (route.name === "Reminders") iconName = focused ? "alarm" : "alarm-outline";
-                    else if (route.name === "Profile") iconName = focused ? "person" : "person-outline";
-                    else if (route.name === "Admin") iconName = focused ? "shield" : "shield-outline";
-                    return <Ionicons name={iconName} size={size} color={color} />;
-                  },
-                  tabBarActiveTintColor: "#4c6fff",
-                  tabBarInactiveTintColor: "#8a97b6",
-                  tabBarStyle: {
-                    borderTopWidth: 1,
-                    borderTopColor: "#f1f4ff",
-                    height: Platform.OS === "ios" ? 88 : 70,
-                    paddingBottom: Platform.OS === "ios" ? 28 : 12,
-                    paddingTop: 10,
-                  },
-                })}
-              >
-                <Tabs.Screen name="Dashboard" component={DashboardScreen} />
-                <Tabs.Screen name="Daily Log" component={DailyLogScreen} />
-                <Tabs.Screen name="Meals" component={MealsScreen} />
-                <Tabs.Screen name="Reminders">
-                  {(p) => <RemindersScreen {...p} notificationsEnabled={notificationsEnabled} />}
-                </Tabs.Screen>
-                {session.role === "Admin" ? <Tabs.Screen name="Admin" component={AdminScreen} /> : null}
-                <Tabs.Screen name="Profile">
-                  {(p) => (
-                    <ProfileScreen
-                      {...p}
-                      onLogout={logout}
-                      onEnsurePushReady={() => ensurePushReady(notificationsEnabled)}
-                      notificationsEnabled={notificationsEnabled}
-                      onToggleNotifications={setNotificationsEnabled}
-                    />
-                  )}
-                </Tabs.Screen>
-              </Tabs.Navigator>
-            )}
-          </Stack.Screen>
+          <>
+            <Stack.Screen name="Main">
+              {() => (
+                <Tabs.Navigator
+                  screenOptions={({ route }) => ({
+                    headerShown: false,
+                    tabBarIcon: ({ focused, color, size }) => {
+                      let iconName: any;
+                      if (route.name === "Dashboard") iconName = focused ? "stats-chart" : "stats-chart-outline";
+                      else if (route.name === "Daily Log") iconName = focused ? "calendar" : "calendar-outline";
+                      else if (route.name === "Meals") iconName = focused ? "fast-food" : "fast-food-outline";
+                      else if (route.name === "Reminders") iconName = focused ? "alarm" : "alarm-outline";
+                      else if (route.name === "Profile") iconName = focused ? "person" : "person-outline";
+                      return <Ionicons name={iconName} size={size} color={color} />;
+                    },
+                    tabBarActiveTintColor: "#4c6fff",
+                    tabBarInactiveTintColor: "#8a97b6",
+                    tabBarStyle: {
+                      borderTopWidth: 1,
+                      borderTopColor: "#f1f4ff",
+                      height: Platform.OS === "ios" ? 88 : 70,
+                      paddingBottom: Platform.OS === "ios" ? 28 : 12,
+                      paddingTop: 10,
+                    },
+                  })}
+                >
+                  <Tabs.Screen name="Dashboard" component={DashboardScreen} />
+                  <Tabs.Screen name="Daily Log" component={DailyLogScreen} />
+                  <Tabs.Screen name="Meals" component={MealsScreen} />
+                  <Tabs.Screen name="Reminders">
+                    {(p) => <RemindersScreen {...p} notificationsEnabled={notificationsEnabled} />}
+                  </Tabs.Screen>
+                  <Tabs.Screen name="Profile">
+                    {(p) => (
+                      <ProfileScreen
+                        {...p}
+                        onLogout={logout}
+                        onEnsurePushReady={() => ensurePushReady(notificationsEnabled)}
+                        notificationsEnabled={notificationsEnabled}
+                        onToggleNotifications={setNotificationsEnabled}
+                        showAdminEntry={session.role === "Admin"}
+                        onOpenAdmin={session.role === "Admin" ? () => p.navigation.getParent()?.navigate("Admin") : undefined}
+                        onProfileSaved={syncSessionFullName}
+                      />
+                    )}
+                  </Tabs.Screen>
+                </Tabs.Navigator>
+              )}
+            </Stack.Screen>
+            {session.role === "Admin" ? <Stack.Screen name="Admin" component={AdminScreen} /> : null}
+          </>
         )}
       </Stack.Navigator>
     </NavigationContainer>

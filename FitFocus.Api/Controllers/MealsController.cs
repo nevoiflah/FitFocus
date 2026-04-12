@@ -20,6 +20,14 @@ public sealed class MealsController(IMealRepository meals) : ControllerBase
         return Ok(result);
     }
 
+    [HttpGet("range")]
+    public async Task<ActionResult<List<MealEntry>>> GetRange([FromQuery] DateOnly from, [FromQuery] DateOnly to)
+    {
+        var userId = User.GetUserId();
+        var result = await meals.GetRangeAsync(userId, from, to);
+        return Ok(result);
+    }
+
     [HttpPost]
     public async Task<ActionResult> Create(CreateMealRequest request)
     {

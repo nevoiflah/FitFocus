@@ -1,13 +1,13 @@
 # FitFocus API
 
-ASP.NET Core Web API backend for the FitFocus mobile app.
+ASP.NET Core Web API backend for the FitFocus mobile app, targeting .NET 9.
 
 ## Main capabilities
 
 - JWT auth (`/api/auth/register`, `/api/auth/login`)
 - Profile management (`/api/profile`)
-- Daily health logs (`/api/dailylogs`)
-- Meals (`/api/meals`)
+- Daily health logs (`/api/dailylogs`, `/api/dailylogs/range`)
+- Meals (`/api/meals`, `/api/meals/range`)
 - Medication reminders (`/api/reminders`)
 - Dashboard risk summary (`/api/dashboard/summary`)
 - Device token registration + test push (`/api/notifications/register-device`, `/api/notifications/send-test`)

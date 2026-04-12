@@ -18,8 +18,12 @@ const miniChartConfig = {
   propsForLabels: { fontSize: 9 },
 };
 
+type LegendItem = {
+  label: string;
+  color: string;
+};
+
 interface ChartBoxProps {
-  title?: string;
   data: any;
   value: string | number;
   unit: string;
@@ -28,10 +32,11 @@ interface ChartBoxProps {
   chartHeight?: number;
   compact?: boolean;
   todayDayLabel?: string;
+  legendItems?: LegendItem[];
+  bezier?: boolean;
 }
 
 export const ChartBox: React.FC<ChartBoxProps> = ({
-  title,
   data,
   value,
   unit,
@@ -40,6 +45,8 @@ export const ChartBox: React.FC<ChartBoxProps> = ({
   chartHeight = 160,
   compact = false,
   todayDayLabel,
+  legendItems,
+  bezier = true,
 }) => {
   const [selected, setSelected] = useState<{ val: number | string; day: string } | null>(null);
 
@@ -94,6 +101,17 @@ export const ChartBox: React.FC<ChartBoxProps> = ({
             </View>
           )}
         </View>
+
+        {legendItems?.length ? (
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 12, marginTop: compact ? 6 : 8 }}>
+            {legendItems.map((item) => (
+              <View key={item.label} style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                <View style={{ width: 14, height: 3, borderRadius: 999, backgroundColor: item.color }} />
+                <Text style={{ fontSize: 11, fontWeight: "600", color: COLORS.textSub }}>{item.label}</Text>
+              </View>
+            ))}
+          </View>
+        ) : null}
       </View>
       {data ? (
         <LineChart
@@ -101,7 +119,7 @@ export const ChartBox: React.FC<ChartBoxProps> = ({
           width={resolvedChartWidth}
           height={chartHeight}
           chartConfig={chartConfig}
-          bezier
+          bezier={bezier}
           withDots={true}
           withInnerLines={true}
           withOuterLines={true}

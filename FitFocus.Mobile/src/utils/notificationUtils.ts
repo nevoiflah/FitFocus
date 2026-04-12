@@ -5,6 +5,32 @@ import Constants from "expo-constants";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { api } from "../api";
 
+const REMINDER_NOTIFICATION_MAP_KEY = "fitfocus_local_reminder_map";
+
+type ReminderNotificationMap = Record<string, string>;
+
+async function readReminderNotificationMap(): Promise<ReminderNotificationMap> {
+  const raw = await AsyncStorage.getItem(REMINDER_NOTIFICATION_MAP_KEY);
+  if (!raw) {
+    return {};
+  }
+
+  try {
+    return JSON.parse(raw) as ReminderNotificationMap;
+  } catch {
+    return {};
+  }
+}
+
+async function writeReminderNotificationMap(map: ReminderNotificationMap) {
+  if (Object.keys(map).length === 0) {
+    await AsyncStorage.removeItem(REMINDER_NOTIFICATION_MAP_KEY);
+    return;
+  }
+
+  await AsyncStorage.setItem(REMINDER_NOTIFICATION_MAP_KEY, JSON.stringify(map));
+}
+
 export function setupNotifications() {
   Notifications.setNotificationHandler({
     handleNotification: async () => ({
@@ -17,7 +43,45 @@ export function setupNotifications() {
   });
 }
 
-export async function scheduleLocalReminder(title: string, body: string, time: string, enabled: boolean) {
+export async function cancelLocalReminder(reminderId: number) {
+  const map = await readReminderNotificationMap();
+  const notificationId = map[String(reminderId)];
+
+  if (!notificationId) {
+    return;
+  }
+
+  try {
+    await Notifications.cancelScheduledNotificationAsync(notificationId);
+  } catch {
+    // Ignore stale notification IDs that no longer exist on the device.
+  }
+
+  delete map[String(reminderId)];
+  await writeReminderNotificationMap(map);
+}
+
+export async function clearStoredReminderNotifications() {
+  const map = await readReminderNotificationMap();
+
+  for (const notificationId of Object.values(map)) {
+    try {
+      await Notifications.cancelScheduledNotificationAsync(notificationId);
+    } catch {
+      // Ignore stale notification IDs that were already removed.
+    }
+  }
+
+  await AsyncStorage.removeItem(REMINDER_NOTIFICATION_MAP_KEY);
+}
+
+export async function scheduleLocalReminder(
+  reminderId: number,
+  title: string,
+  body: string,
+  time: string,
+  enabled: boolean,
+) {
   if (!enabled) return;
 
   const [hourString, minuteString] = time.split(":");
@@ -27,7 +91,9 @@ export async function scheduleLocalReminder(title: string, body: string, time: s
     return;
   }
 
-  await Notifications.scheduleNotificationAsync({
+  await cancelLocalReminder(reminderId);
+
+  const notificationId = await Notifications.scheduleNotificationAsync({
     content: {
       title,
       body,
@@ -39,6 +105,10 @@ export async function scheduleLocalReminder(title: string, body: string, time: s
       minute,
     },
   });
+
+  const map = await readReminderNotificationMap();
+  map[String(reminderId)] = notificationId;
+  await writeReminderNotificationMap(map);
 }
 
 export async function registerNotifications(enabled: boolean): Promise<{ token: string; error?: string }> {

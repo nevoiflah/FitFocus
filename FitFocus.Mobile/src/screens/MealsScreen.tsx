@@ -53,8 +53,8 @@ export const MealsScreen: React.FC = () => {
         .sort()
         .reverse();
       setAvailableDates(dates);
-    } catch (err) {
-      console.log("Could not refresh dates", err);
+    } catch {
+      // Ignore refresh failures. The date filter remains optional.
     }
   };
 

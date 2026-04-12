@@ -1,5 +1,5 @@
 import React from "react";
-import { Pressable, Text } from "react-native";
+import { Pressable, Text, StyleProp, ViewStyle } from "react-native";
 import { globalStyles } from "../styles/globalStyles";
 
 interface ActionButtonProps {
@@ -7,6 +7,7 @@ interface ActionButtonProps {
   onPress: () => void;
   variant?: "primary" | "secondary" | "danger";
   disabled?: boolean;
+  style?: StyleProp<ViewStyle>;
 }
 
 export const ActionButton: React.FC<ActionButtonProps> = ({
@@ -14,6 +15,7 @@ export const ActionButton: React.FC<ActionButtonProps> = ({
   onPress,
   variant = "primary",
   disabled = false,
+  style,
 }) => {
   return (
     <Pressable
@@ -24,6 +26,7 @@ export const ActionButton: React.FC<ActionButtonProps> = ({
         variant === "secondary" ? globalStyles.buttonSecondary : globalStyles.buttonPrimary,
         variant === "danger" ? globalStyles.buttonDanger : null,
         pressed || disabled ? globalStyles.buttonPressed : null,
+        style,
       ]}
     >
       <Text

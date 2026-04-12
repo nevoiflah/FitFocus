@@ -5,60 +5,45 @@ import { Platform } from "react-native";
 const hostUri = Constants.expoConfig?.hostUri?.split(":")[0];
 const configuredBaseUrl = (Constants.expoConfig?.extra ?? {})?.apiBaseUrl;
 
-type BaseUrlSource = "expo-host" | "app-config" | "android-emulator" | "localhost";
-
-export type ApiHealth = {
-  status: "ok" | "degraded";
-  startedAtUtc: string;
-  database: {
-    ready: boolean;
-    checkedAtUtc?: string | null;
-    message: string;
-  };
-};
-
 const normalizeApiBaseUrl = (value: string) => {
   const trimmed = value.trim().replace(/\/+$/, "");
   return trimmed.endsWith("/api") ? trimmed : `${trimmed}/api`;
 };
 
-const resolveBaseUrl = (): { url: string; source: BaseUrlSource } => {
+const resolveBaseUrl = (): string => {
   if (configuredBaseUrl) {
-    return {
-      url: normalizeApiBaseUrl(configuredBaseUrl),
-      source: "app-config",
-    };
+    return normalizeApiBaseUrl(configuredBaseUrl);
   }
 
   if (hostUri) {
-    return {
-      url: normalizeApiBaseUrl(`http://${hostUri}:5117`),
-      source: "expo-host",
-    };
+    return normalizeApiBaseUrl(`http://${hostUri}:5117`);
   }
 
   if (Platform.OS === "android") {
-    return {
-      url: "http://10.0.2.2:5117/api",
-      source: "android-emulator",
-    };
+    return "http://10.0.2.2:5117/api";
   }
 
-  return {
-    url: "http://localhost:5117/api",
-    source: "localhost",
-  };
+  return "http://localhost:5117/api";
 };
 
-const BASE_URL_INFO = resolveBaseUrl();
-const BASE_URL = BASE_URL_INFO.url;
-const API_ROOT_URL = BASE_URL.replace(/\/api$/, "");
+const BASE_URL = resolveBaseUrl();
 
 export type AuthResponse = {
   token: string;
   userId: number;
   email: string;
   fullName: string;
+  role: string;
+};
+
+export type Profile = {
+  id: number;
+  email: string;
+  fullName: string;
+  dateOfBirth: string | null;
+  heightCm: number | null;
+  weightKg: number | null;
+  gender: string | null;
   role: string;
 };
 
@@ -99,18 +84,10 @@ export type AdminUser = {
   email: string;
   fullName: string;
   role: string;
-};
-
-export type DashboardSummary = {
-  daysAnalyzed: number;
-  avgSleepHours: number;
-  avgMoodScore: number;
-  avgStressScore: number;
-  avgWaterLiters: number;
-  totalMealsLogged: number;
-  riskScore: number;
-  riskLevel: string;
-  riskSignals: string[];
+  dateOfBirth: string | null;
+  heightCm: number | null;
+  weightKg: number | null;
+  gender: string | null;
 };
 
 let authToken = "";
@@ -148,12 +125,6 @@ export const api = {
   setOnUnauthorized(cb: () => void | Promise<void>) {
     onUnauthorized = cb;
   },
-  async getHealth() {
-    const { data } = await axios.get<ApiHealth>(`${API_ROOT_URL}/health`, {
-      timeout: 5000,
-    });
-    return data;
-  },
   async register(email: string, password: string, fullName: string) {
     const { data } = await http.post<AuthResponse>("/auth/register", {
       email,
@@ -170,7 +141,7 @@ export const api = {
     return data;
   },
   async getProfile() {
-    const { data } = await http.get("/profile");
+    const { data } = await http.get<Profile>("/profile");
     return data;
   },
   async updateProfile(payload: {
@@ -201,12 +172,6 @@ export const api = {
     const { data } = await http.get<DailyLog[]>("/dailylogs/range", { params: { from, to } });
     return data;
   },
-  async getDashboard(days = 14) {
-    const { data } = await http.get<DashboardSummary>("/dashboard/summary", {
-      params: { days },
-    });
-    return data;
-  },
   async createMeal(payload: {
     dailyLogId?: number;
     logDate: string;
@@ -221,6 +186,12 @@ export const api = {
   async getMeals(date?: string, mealType?: string) {
     const { data } = await http.get<Meal[]>("/meals", {
       params: { date, mealType },
+    });
+    return data;
+  },
+  async getMealsRange(from: string, to: string) {
+    const { data } = await http.get<Meal[]>("/meals/range", {
+      params: { from, to },
     });
     return data;
   },
@@ -241,7 +212,11 @@ export const api = {
     reminderTime: string;
     isActive: boolean;
   }) {
-    await http.post("/reminders", payload);
+    const { data } = await http.post<{ id: number }>("/reminders", payload);
+    return data;
+  },
+  async deleteReminder(reminderId: number) {
+    await http.delete(`/reminders/${reminderId}`);
   },
   async registerDeviceToken(expoPushToken: string, deviceName?: string) {
     await http.post("/notifications/register-device", { expoPushToken, deviceName });
@@ -259,8 +234,5 @@ export const api = {
   },
   getBaseUrl() {
     return BASE_URL;
-  },
-  getBaseUrlSource() {
-    return BASE_URL_INFO.source;
   },
 };

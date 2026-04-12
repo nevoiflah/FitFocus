@@ -6,7 +6,7 @@ FitFocus is a comprehensive health and lifestyle tracking system consisting of a
 
 The repository is organized into two primary components:
 
-*   **FitFocus.Api**: A RESTful Web API built with .NET 8, utilizing SQL Server for persistent data storage. It handles authentication, data aggregation, and notification scheduling.
+*   **FitFocus.Api**: A RESTful Web API built with .NET 9, utilizing SQL Server for persistent data storage. It handles authentication, data aggregation, and notification scheduling.
 *   **FitFocus.Mobile**: A mobile application built with React Native and Expo. It provides the user interface for data entry, progress visualization via dynamic charts, and push notification management.
 
 ---
@@ -19,9 +19,10 @@ The repository is organized into two primary components:
 *   **Password Hashing**: Secure storage of user credentials using industry-standard hashing algorithms.
 
 ### Dashboard and Data Visualization
-*   **Dynamic Health Metrics**: Visualization of Mood, Sleep, Stress, and Water intake using `react-native-chart-kit`.
+*   **Dynamic Health Metrics**: Visualization of Calories, Mood, Sleep, Stress, and Water trends using `react-native-chart-kit`.
 *   **Fixed Weekly View**: All charts display data from Sunday to Saturday for consistent trend analysis.
-*   **Interactive Analytics**: Touch-enabled data points providing detailed daily values and timestamps directly within the UI.
+*   **Interactive Analytics**: Touch-enabled data points providing detailed daily values directly within the UI.
+*   **Calorie Comparison View**: Weekly calorie intake is compared against an estimated daily burn line when profile details are available.
 *   **Automated Risk Scoring**: Backend service that calculates health risks based on historical data patterns.
 
 ### Health Logging
@@ -112,8 +113,8 @@ If `status` is `degraded`, the API is up but the database is currently unavailab
 ### 5. Demo Checklist
 1. Start the API and verify `GET /health`.
 2. Start the mobile app with `npm start`.
-3. Confirm the login screen shows a healthy API connection and the expected API URL.
-4. Demo the main flow: login, daily log, meal photo, reminder, dashboard, profile.
+3. Log in successfully and confirm the app loads live data from the expected API URL.
+4. Demo the main flow: login, daily log, meal photo, reminder, dashboard, profile, and admin panel if relevant.
 
 ---
 
