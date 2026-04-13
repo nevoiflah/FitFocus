@@ -7,7 +7,8 @@ const configuredBaseUrl = (Constants.expoConfig?.extra ?? {})?.apiBaseUrl;
 
 const normalizeApiBaseUrl = (value: string) => {
   const trimmed = value.trim().replace(/\/+$/, "");
-  return trimmed.endsWith("/api") ? trimmed : `${trimmed}/api`;
+  const withApi = trimmed.endsWith("/api") ? trimmed : `${trimmed}/api`;
+  return withApi + "/";
 };
 
 const resolveBaseUrl = (): string => {
@@ -20,10 +21,10 @@ const resolveBaseUrl = (): string => {
   }
 
   if (Platform.OS === "android") {
-    return "http://10.0.2.2:5117/api";
+    return "http://10.0.2.2:5117/api/";
   }
 
-  return "http://localhost:5117/api";
+  return "http://localhost:5117/api/";
 };
 
 const BASE_URL = resolveBaseUrl();
@@ -126,7 +127,7 @@ export const api = {
     onUnauthorized = cb;
   },
   async register(email: string, password: string, fullName: string) {
-    const { data } = await http.post<AuthResponse>("/auth/register", {
+    const { data } = await http.post<AuthResponse>("auth/register", {
       email,
       password,
       fullName,
@@ -134,14 +135,14 @@ export const api = {
     return data;
   },
   async login(email: string, password: string) {
-    const { data } = await http.post<AuthResponse>("/auth/login", {
+    const { data } = await http.post<AuthResponse>("auth/login", {
       email,
       password,
     });
     return data;
   },
   async getProfile() {
-    const { data } = await http.get<Profile>("/profile");
+    const { data } = await http.get<Profile>("profile");
     return data;
   },
   async updateProfile(payload: {
@@ -151,7 +152,7 @@ export const api = {
     weightKg?: number | null;
     gender?: string | null;
   }) {
-    await http.put("/profile", payload);
+    await http.put("profile", payload);
   },
   async upsertDailyLog(payload: {
     logDate: string;
@@ -162,14 +163,14 @@ export const api = {
     symptoms?: string;
     notes?: string;
   }) {
-    await http.post("/dailylogs", payload);
+    await http.post("dailylogs", payload);
   },
   async getDailyLog(date: string) {
-    const { data } = await http.get<DailyLog>("/dailylogs", { params: { date } });
+    const { data } = await http.get<DailyLog>("dailylogs", { params: { date } });
     return data;
   },
   async getDailyLogRange(from: string, to: string) {
-    const { data } = await http.get<DailyLog[]>("/dailylogs/range", { params: { from, to } });
+    const { data } = await http.get<DailyLog[]>("dailylogs/range", { params: { from, to } });
     return data;
   },
   async createMeal(payload: {
@@ -180,30 +181,30 @@ export const api = {
     calories?: number;
     imageUrl?: string;
   }) {
-    const { data } = await http.post<{ id: number }>("/meals", payload);
+    const { data } = await http.post<{ id: number }>("meals", payload);
     return data;
   },
   async getMeals(date?: string, mealType?: string) {
-    const { data } = await http.get<Meal[]>("/meals", {
+    const { data } = await http.get<Meal[]>("meals", {
       params: { date, mealType },
     });
     return data;
   },
   async getMealsRange(from: string, to: string) {
-    const { data } = await http.get<Meal[]>("/meals/range", {
+    const { data } = await http.get<Meal[]>("meals/range", {
       params: { from, to },
     });
     return data;
   },
   async getMealsByLog(logId: number) {
-    const { data } = await http.get<Meal[]>(`/meals/by-log/${logId}`);
+    const { data } = await http.get<Meal[]>(`meals/by-log/${logId}`);
     return data;
   },
   async deleteMeal(mealId: number) {
-    await http.delete(`/meals/${mealId}`);
+    await http.delete(`meals/${mealId}`);
   },
   async getReminders() {
-    const { data } = await http.get<Reminder[]>("/reminders");
+    const { data } = await http.get<Reminder[]>("reminders");
     return data;
   },
   async createReminder(payload: {
@@ -212,24 +213,24 @@ export const api = {
     reminderTime: string;
     isActive: boolean;
   }) {
-    const { data } = await http.post<{ id: number }>("/reminders", payload);
+    const { data } = await http.post<{ id: number }>("reminders", payload);
     return data;
   },
   async deleteReminder(reminderId: number) {
-    await http.delete(`/reminders/${reminderId}`);
+    await http.delete(`reminders/${reminderId}`);
   },
   async registerDeviceToken(expoPushToken: string, deviceName?: string) {
-    await http.post("/notifications/register-device", { expoPushToken, deviceName });
+    await http.post("notifications/register-device", { expoPushToken, deviceName });
   },
   async unregisterDeviceToken(expoPushToken: string) {
-    await http.post("/notifications/unregister-device", { expoPushToken });
+    await http.post("notifications/unregister-device", { expoPushToken });
   },
   async sendTestPush(title: string, body: string) {
-    const { data } = await http.post("/notifications/send-test", { title, body });
+    const { data } = await http.post("notifications/send-test", { title, body });
     return data as { sent: number; total: number };
   },
   async getAdminUsers() {
-    const { data } = await http.get<AdminUser[]>("/admin/users");
+    const { data } = await http.get<AdminUser[]>("admin/users");
     return data;
   },
   getBaseUrl() {

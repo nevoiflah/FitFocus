@@ -2,9 +2,9 @@ namespace FitFocus.Api.Models.Responses;
 
 public sealed class AuthResponse
 {
-    public required string Token { get; init; }
-    public required int UserId { get; init; }
-    public required string Email { get; init; }
-    public required string FullName { get; init; }
-    public required string Role { get; init; }
+    public string Token { get; init; } = string.Empty;
+    public int UserId { get; init; }
+    public string Email { get; init; } = string.Empty;
+    public string FullName { get; init; } = string.Empty;
+    public string Role { get; init; } = string.Empty;
 }

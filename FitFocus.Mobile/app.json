@@ -25,7 +25,7 @@
       "@react-native-community/datetimepicker"
     ],
     "extra": {
-      "apiBaseUrl": "",
+      "apiBaseUrl": "https://proj.ruppin.ac.il/cgroup17/test2/tar1",
       "eas": {
         "projectId": "3d058b67-8939-431f-97be-63304c2624ac"
       }
