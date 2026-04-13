@@ -2,7 +2,7 @@ import React, { useState, useMemo, useCallback } from "react";
 import { View, ScrollView, Text, ActivityIndicator, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
-import { api, DailyLog, Meal, Profile } from "../api";
+import { api, DailyLog, Meal, Profile, DashboardSummary } from "../api";
 import { ChartBox } from "../components/ChartBox";
 import { globalStyles } from "../styles/globalStyles";
 import { SPACING } from "../styles/theme";
@@ -12,54 +12,105 @@ import { estimateDailyBurn } from "../utils/calorieUtils";
 const CALORIE_INTAKE_COLOR = "rgba(245, 158, 11, ";
 const CALORIE_BURN_COLOR = "rgba(15, 118, 110, ";
 
+const getRiskTone = (level?: string) => {
+  switch (level) {
+    case "Critical":
+      return {
+        backgroundColor: "#fff1f2",
+        borderColor: "#fecdd3",
+        textColor: "#be123c",
+        accentColor: "#e11d48",
+      };
+    case "High":
+      return {
+        backgroundColor: "#fff7ed",
+        borderColor: "#fdba74",
+        textColor: "#c2410c",
+        accentColor: "#ea580c",
+      };
+    case "Medium":
+      return {
+        backgroundColor: "#fefce8",
+        borderColor: "#fde68a",
+        textColor: "#a16207",
+        accentColor: "#ca8a04",
+      };
+    default:
+      return {
+        backgroundColor: "#ecfdf5",
+        borderColor: "#a7f3d0",
+        textColor: "#047857",
+        accentColor: "#059669",
+      };
+  }
+};
+
 export const DashboardScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const [history, setHistory] = useState<DailyLog[]>([]);
   const [weekMeals, setWeekMeals] = useState<Meal[]>([]);
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [riskSummary, setRiskSummary] = useState<DashboardSummary | null>(null);
+  const [riskSummaryMessage, setRiskSummaryMessage] = useState<string | null>(null);
+  const [dashboardMessage, setDashboardMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   const fetchData = async () => {
-  try {
-    setBusy(true);
-    const sun = startOfLocalWeek(new Date());
-    const sat = addDays(sun, 6);
-    const from = formatLocalDate(sun);
-    const to = formatLocalDate(sat);
-
-    const [historyData, profileData] = await Promise.all([
-      api.getDailyLogRange(from, to),
-      api.getProfile(),
-    ]);
-
-    setHistory((historyData ?? []).sort((a, b) => a.logDate.localeCompare(b.logDate)));
-    setProfile(profileData);
-
     try {
-      const mealsData = await api.getMealsRange(from, to);
-      setWeekMeals((mealsData ?? []).sort((a, b) => a.logDate.localeCompare(b.logDate)));
-    } catch (err: any) {
-      const status = err?.response?.status;
+      setBusy(true);
+      setDashboardMessage(null);
+      setRiskSummaryMessage(null);
 
-      if (status === 404 || status === 405) {
-        const fallbackMeals = await api.getMeals();
-        const filteredMeals = (fallbackMeals ?? []).filter((meal) => meal.logDate >= from && meal.logDate <= to);
-        setWeekMeals(filteredMeals.sort((a, b) => a.logDate.localeCompare(b.logDate)));
-      } else {
-        console.error("Dashboard meals error:", err);
-        setWeekMeals([]);
+      const sun = startOfLocalWeek(new Date());
+      const sat = addDays(sun, 6);
+      const from = formatLocalDate(sun);
+      const to = formatLocalDate(sat);
+
+      const [historyData, profileData] = await Promise.all([
+        api.getDailyLogRange(from, to),
+        api.getProfile(),
+      ]);
+
+      setHistory((historyData ?? []).sort((a, b) => a.logDate.localeCompare(b.logDate)));
+      setProfile(profileData);
+
+      try {
+        const summaryData = await api.getDashboardSummary(7);
+        setRiskSummary(summaryData);
+      } catch {
+        setRiskSummary(null);
+        setRiskSummaryMessage("Risk summary is temporarily unavailable.");
       }
-    }
-  } catch (err: any) {
-    console.error("Dashboard error:", err);
-  } finally {
-    setBusy(false);
-  }
-};
 
-  useFocusEffect
-  (
+      try {
+        const mealsData = await api.getMealsRange(from, to);
+        setWeekMeals((mealsData ?? []).sort((a, b) => a.logDate.localeCompare(b.logDate)));
+      } catch (err: any) {
+        const status = err?.response?.status;
+
+        if (status === 404 || status === 405) {
+          const fallbackMeals = await api.getMeals();
+          const filteredMeals = (fallbackMeals ?? []).filter((meal) => meal.logDate >= from && meal.logDate <= to);
+          setWeekMeals(filteredMeals.sort((a, b) => a.logDate.localeCompare(b.logDate)));
+        } else {
+          setWeekMeals([]);
+          setDashboardMessage((current) => current ?? "Meal data is temporarily unavailable.");
+        }
+      }
+    } catch {
+      setHistory([]);
+      setWeekMeals([]);
+      setProfile(null);
+      setRiskSummary(null);
+      setRiskSummaryMessage(null);
+      setDashboardMessage("Dashboard data is temporarily unavailable. Reopen the page to try again.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  useFocusEffect(
     useCallback(() => {
       fetchData();
     }, []),
@@ -72,6 +123,7 @@ export const DashboardScreen: React.FC = () => {
   const chartWidth = Math.max(260, chartColumnWidth - SPACING.lg * 2 - 18);
   const weekDays = useMemo(() => ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"], []);
   const todayDayLabel = useMemo(() => weekDays[new Date().getDay()], [weekDays]);
+  const riskTone = useMemo(() => getRiskTone(riskSummary?.riskLevel), [riskSummary?.riskLevel]);
 
   const weekEntries = useMemo(() => {
     const sun = startOfLocalWeek(new Date());
@@ -152,7 +204,6 @@ export const DashboardScreen: React.FC = () => {
     };
   }, [profile, today, weekMeals]);
 
-
   const chartCards = [
     {
       key: "calories",
@@ -229,6 +280,59 @@ export const DashboardScreen: React.FC = () => {
           <Text style={[globalStyles.title, { marginBottom: 0 }]}>Dashboard</Text>
           <Text style={[globalStyles.subtitle, { marginBottom: 0 }]}>Your week at a glance</Text>
           {busy && <ActivityIndicator style={{ marginTop: 12, marginBottom: 4 }} />}
+
+          {dashboardMessage ? (
+            <View style={[globalStyles.sectionCard, { marginTop: 18, marginBottom: 0 }]}>
+              <Text style={globalStyles.sectionTitle}>Dashboard Notice</Text>
+              <Text style={globalStyles.sectionDescription}>{dashboardMessage}</Text>
+            </View>
+          ) : null}
+
+          {riskSummary ? (
+            <View style={[globalStyles.sectionCard, { marginTop: 18, marginBottom: 0 }]}> 
+              <View style={globalStyles.riskSummaryHeader}>
+                <View style={{ flex: 1 }}>
+                  <Text style={globalStyles.sectionTitle}>Risk Summary</Text>
+                  <Text style={globalStyles.sectionDescription}>
+                    Based on sleep, mood, stress, hydration, and symptoms from the last {riskSummary.daysAnalyzed} days.
+                  </Text>
+                </View>
+                <View
+                  style={[
+                    globalStyles.riskLevelBadge,
+                    { backgroundColor: riskTone.backgroundColor, borderColor: riskTone.borderColor },
+                  ]}
+                >
+                  <Text style={[globalStyles.riskLevelText, { color: riskTone.textColor }]}>{riskSummary.riskLevel}</Text>
+                </View>
+              </View>
+
+              <View style={globalStyles.riskScoreRow}>
+                <Text style={[globalStyles.riskScoreValue, { color: riskTone.accentColor }]}>
+                  {Math.round(Number(riskSummary.riskScore) || 0)}
+                </Text>
+                <Text style={globalStyles.riskScoreUnit}>/100</Text>
+              </View>
+
+              <View style={globalStyles.riskSignalsList}>
+                {riskSummary.riskSignals.length > 0 ? (
+                  riskSummary.riskSignals.map((signal) => (
+                    <View key={signal} style={globalStyles.riskSignalRow}>
+                      <Text style={[globalStyles.riskSignalBullet, { color: riskTone.accentColor }]}>•</Text>
+                      <Text style={globalStyles.riskSignalText}>{signal}</Text>
+                    </View>
+                  ))
+                ) : (
+                  <Text style={globalStyles.riskSignalEmpty}>No major warning signals detected in the selected period.</Text>
+                )}
+              </View>
+            </View>
+          ) : riskSummaryMessage ? (
+            <View style={[globalStyles.sectionCard, { marginTop: 18, marginBottom: 0 }]}> 
+              <Text style={globalStyles.sectionTitle}>Risk Summary</Text>
+              <Text style={globalStyles.sectionDescription}>{riskSummaryMessage}</Text>
+            </View>
+          ) : null}
 
           <View
             style={{

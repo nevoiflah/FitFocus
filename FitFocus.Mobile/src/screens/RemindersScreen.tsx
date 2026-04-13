@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { View, ScrollView, Text, Alert, Pressable, ActivityIndicator } from "react-native";
+import { View, ScrollView, Text, Alert, Pressable, ActivityIndicator, Platform } from "react-native";
+import DateTimePicker, { DateTimePickerEvent } from "@react-native-community/datetimepicker";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { api, Reminder } from "../api";
@@ -13,15 +14,19 @@ interface RemindersScreenProps {
   notificationsEnabled: boolean;
 }
 
-const isValidTime = (value: string) => {
-  const match = value.match(/^(\d{2}):(\d{2})$/);
-  if (!match) {
-    return false;
-  }
+const DEFAULT_TIME = "08:00";
 
-  const hour = Number(match[1]);
-  const minute = Number(match[2]);
-  return hour >= 0 && hour <= 23 && minute >= 0 && minute <= 59;
+const buildPickerDate = (value: string) => {
+  const [hourValue, minuteValue] = value.split(":").map((part) => Number(part));
+  const date = new Date();
+  date.setHours(Number.isFinite(hourValue) ? hourValue : 8, Number.isFinite(minuteValue) ? minuteValue : 0, 0, 0);
+  return date;
+};
+
+const formatReminderTime = (date: Date) => {
+  const hour = String(date.getHours()).padStart(2, "0");
+  const minute = String(date.getMinutes()).padStart(2, "0");
+  return `${hour}:${minute}`;
 };
 
 export const RemindersScreen: React.FC<RemindersScreenProps> = ({ notificationsEnabled }) => {
@@ -32,7 +37,9 @@ export const RemindersScreen: React.FC<RemindersScreenProps> = ({ notificationsE
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [medicationName, setMedicationName] = useState("");
   const [dosage, setDosage] = useState("");
-  const [time, setTime] = useState("08:00");
+  const [time, setTime] = useState(DEFAULT_TIME);
+  const [pickerDate, setPickerDate] = useState(() => buildPickerDate(DEFAULT_TIME));
+  const [showTimePicker, setShowTimePicker] = useState(false);
 
   const load = async () => {
     try {
@@ -49,14 +56,30 @@ export const RemindersScreen: React.FC<RemindersScreenProps> = ({ notificationsE
     void load();
   }, []);
 
-  const createReminder = async () => {
-    if (!medicationName.trim() || !dosage.trim()) {
-      Alert.alert("Missing", "Medication and dosage are required.");
+  const resetForm = () => {
+    setMedicationName("");
+    setDosage("");
+    setTime(DEFAULT_TIME);
+    setPickerDate(buildPickerDate(DEFAULT_TIME));
+    setShowTimePicker(false);
+  };
+
+  const handleTimeChange = (event: DateTimePickerEvent, selectedDate?: Date) => {
+    if (Platform.OS === "android") {
+      setShowTimePicker(false);
+    }
+
+    if (event.type === "dismissed" || !selectedDate) {
       return;
     }
 
-    if (!isValidTime(time)) {
-      Alert.alert("Invalid time", "Use the 24-hour format HH:mm, for example 08:30.");
+    setPickerDate(selectedDate);
+    setTime(formatReminderTime(selectedDate));
+  };
+
+  const createReminder = async () => {
+    if (!medicationName.trim() || !dosage.trim()) {
+      Alert.alert("Missing", "Medication and dosage are required.");
       return;
     }
 
@@ -77,8 +100,7 @@ export const RemindersScreen: React.FC<RemindersScreenProps> = ({ notificationsE
         notificationsEnabled,
       );
 
-      setMedicationName("");
-      setDosage("");
+      resetForm();
       await load();
     } catch (error: any) {
       Alert.alert("Error", extractErrorMessage(error, "Could not save reminder.", { apiBaseUrl: api.getBaseUrl() }));
@@ -91,7 +113,11 @@ export const RemindersScreen: React.FC<RemindersScreenProps> = ({ notificationsE
     try {
       setDeletingId(reminder.id);
       await api.deleteReminder(reminder.id);
-      await cancelLocalReminder(reminder.id);
+      await cancelLocalReminder(reminder.id, {
+        title: "FitFocus Medication Reminder",
+        body: `${reminder.medicationName} - ${reminder.dosage}`,
+        time: reminder.reminderTime.slice(0, 5),
+      });
       setItems((current) => current.filter((item) => item.id !== reminder.id));
     } catch (error: any) {
       Alert.alert("Error", extractErrorMessage(error, "Could not delete reminder.", { apiBaseUrl: api.getBaseUrl() }));
@@ -127,11 +153,32 @@ export const RemindersScreen: React.FC<RemindersScreenProps> = ({ notificationsE
         ]}
       >
         <Text style={globalStyles.title}>Reminders</Text>
-        <View style={[globalStyles.sectionCard, { marginTop: 12 }]}>
+        <View style={[globalStyles.sectionCard, { marginTop: 12 }]}> 
           <Text style={globalStyles.sectionTitle}>Add a reminder</Text>
           <InputField label="Medication Name" value={medicationName} onChangeText={setMedicationName} placeholder="e.g. Vitamin D" />
           <InputField label="Dosage" value={dosage} onChangeText={setDosage} placeholder="e.g. 1 pill" />
-          <InputField label="Reminder Time" value={time} onChangeText={setTime} placeholder="HH:mm" />
+
+          <View style={globalStyles.inputWrap}>
+            <Text style={globalStyles.inputLabel}>Reminder Time</Text>
+            <Pressable style={globalStyles.timePickerField} onPress={() => setShowTimePicker(true)}>
+              <Text style={globalStyles.timePickerValue}>{time}</Text>
+              <Ionicons name="time-outline" size={18} color="#4c6fff" />
+            </Pressable>
+
+            {showTimePicker && Platform.OS === "ios" ? (
+              <View style={globalStyles.timePickerPanel}>
+                <DateTimePicker value={pickerDate} mode="time" display="spinner" is24Hour onChange={handleTimeChange} />
+                <Pressable style={globalStyles.timePickerDoneButton} onPress={() => setShowTimePicker(false)}>
+                  <Text style={globalStyles.timePickerDoneText}>Done</Text>
+                </Pressable>
+              </View>
+            ) : null}
+
+            {showTimePicker && Platform.OS === "android" ? (
+              <DateTimePicker value={pickerDate} mode="time" display="default" is24Hour onChange={handleTimeChange} />
+            ) : null}
+          </View>
+
           <ActionButton title={submitting ? "Adding..." : "Add Reminder"} onPress={createReminder} disabled={submitting} />
         </View>
 
@@ -148,26 +195,24 @@ export const RemindersScreen: React.FC<RemindersScreenProps> = ({ notificationsE
         ) : (
           items.map((reminder) => (
             <View key={String(reminder.id)} style={globalStyles.sectionCard}>
-              <View style={globalStyles.listItemHeader}>
-                <View style={{ flex: 1 }}>
-                  <Text style={globalStyles.cardTitle}>{reminder.medicationName}</Text>
-                  <Text style={globalStyles.cardMeta}>{reminder.dosage}</Text>
-                </View>
-                <View style={globalStyles.reminderActionColumn}>
-                  <View style={globalStyles.reminderTimeBadge}>
-                    <Text style={globalStyles.reminderTimeText}>{reminder.reminderTime.slice(0, 5)}</Text>
-                  </View>
-                  <Pressable
-                    onPress={() => confirmDelete(reminder)}
-                    disabled={deletingId === reminder.id}
-                    style={globalStyles.reminderDeleteIconAction}
-                  >
-                    {deletingId === reminder.id ? (
-                      <ActivityIndicator size="small" color="#cc4a6a" />
-                    ) : (
-                      <Ionicons name="trash-outline" size={18} color="#cc4a6a" />
-                    )}
-                  </Pressable>
+              <View style={globalStyles.reminderCardTopRow}>
+                <Text style={globalStyles.cardTitle}>{reminder.medicationName}</Text>
+                <Pressable
+                  onPress={() => confirmDelete(reminder)}
+                  disabled={deletingId === reminder.id}
+                  style={globalStyles.reminderDeleteIconAction}
+                >
+                  {deletingId === reminder.id ? (
+                    <ActivityIndicator size="small" color="#cc4a6a" />
+                  ) : (
+                    <Ionicons name="trash-outline" size={18} color="#cc4a6a" />
+                  )}
+                </Pressable>
+              </View>
+              <View style={globalStyles.reminderCardBottomRow}>
+                <Text style={globalStyles.cardMeta}>{reminder.dosage}</Text>
+                <View style={globalStyles.reminderTimeBadge}>
+                  <Text style={globalStyles.reminderTimeText}>{reminder.reminderTime.slice(0, 5)}</Text>
                 </View>
               </View>
             </View>

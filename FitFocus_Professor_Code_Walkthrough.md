@@ -330,11 +330,8 @@ This screen handles both login and registration.
 
 1. Keeps login/register mode in local state.
 2. Manages form fields.
-3. Calls `api.getHealth()` to test API connectivity.
-4. Shows a status card with:
-   the API URL, source of that URL, and whether the API/database are reachable.
-5. Calls either `api.register(...)` or `api.login(...)`.
-6. Sends the successful session object to `App.tsx`.
+3. Calls either `api.register(...)` or `api.login(...)`.
+4. Sends the successful session object to `App.tsx`.
 
 ### Why this logic matters
 

@@ -9,6 +9,12 @@ const REMINDER_NOTIFICATION_MAP_KEY = "fitfocus_local_reminder_map";
 
 type ReminderNotificationMap = Record<string, string>;
 
+type ReminderNotificationHint = {
+  title?: string;
+  body?: string;
+  time?: string;
+};
+
 async function readReminderNotificationMap(): Promise<ReminderNotificationMap> {
   const raw = await AsyncStorage.getItem(REMINDER_NOTIFICATION_MAP_KEY);
   if (!raw) {
@@ -31,6 +37,55 @@ async function writeReminderNotificationMap(map: ReminderNotificationMap) {
   await AsyncStorage.setItem(REMINDER_NOTIFICATION_MAP_KEY, JSON.stringify(map));
 }
 
+const normalizeReminderTime = (value?: string) => {
+  if (!value) {
+    return null;
+  }
+
+  const [hourString = "", minuteString = ""] = value.split(":");
+  if (!hourString || !minuteString) {
+    return null;
+  }
+
+  return `${hourString.padStart(2, "0")}:${minuteString.padStart(2, "0")}`;
+};
+
+const getTriggerTime = (trigger: unknown) => {
+  if (!trigger || typeof trigger !== "object") {
+    return null;
+  }
+
+  const maybeTrigger = trigger as { hour?: number; minute?: number };
+  if (typeof maybeTrigger.hour !== "number" || typeof maybeTrigger.minute !== "number") {
+    return null;
+  }
+
+  return `${String(maybeTrigger.hour).padStart(2, "0")}:${String(maybeTrigger.minute).padStart(2, "0")}`;
+};
+
+const matchesReminderNotification = (
+  request: Notifications.NotificationRequest,
+  reminderId: number,
+  hint?: ReminderNotificationHint,
+) => {
+  const data = request.content.data as { reminderId?: number | string } | undefined;
+  if (data?.reminderId != null && Number(data.reminderId) === reminderId) {
+    return true;
+  }
+
+  if (!hint) {
+    return false;
+  }
+
+  const titleMatches = !hint.title || request.content.title === hint.title;
+  const bodyMatches = !hint.body || request.content.body === hint.body;
+  const expectedTime = normalizeReminderTime(hint.time);
+  const triggerTime = getTriggerTime(request.trigger);
+  const timeMatches = !expectedTime || (triggerTime !== null && triggerTime === expectedTime);
+
+  return titleMatches && bodyMatches && timeMatches;
+};
+
 export function setupNotifications() {
   Notifications.setNotificationHandler({
     handleNotification: async () => ({
@@ -43,22 +98,42 @@ export function setupNotifications() {
   });
 }
 
-export async function cancelLocalReminder(reminderId: number) {
+export async function cancelLocalReminder(reminderId: number, hint?: ReminderNotificationHint) {
   const map = await readReminderNotificationMap();
-  const notificationId = map[String(reminderId)];
+  const reminderKey = String(reminderId);
+  const notificationId = map[reminderKey];
 
-  if (!notificationId) {
+  if (notificationId) {
+    try {
+      await Notifications.cancelScheduledNotificationAsync(notificationId);
+    } catch {
+      // Ignore stale notification IDs that no longer exist on the device.
+    }
+
+    delete map[reminderKey];
+    await writeReminderNotificationMap(map);
+  }
+
+  if (!hint) {
     return;
   }
 
-  try {
-    await Notifications.cancelScheduledNotificationAsync(notificationId);
-  } catch {
-    // Ignore stale notification IDs that no longer exist on the device.
-  }
+  const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+  const matches = scheduled.filter((request) => {
+    if (notificationId && request.identifier === notificationId) {
+      return false;
+    }
 
-  delete map[String(reminderId)];
-  await writeReminderNotificationMap(map);
+    return matchesReminderNotification(request, reminderId, hint);
+  });
+
+  for (const request of matches) {
+    try {
+      await Notifications.cancelScheduledNotificationAsync(request.identifier);
+    } catch {
+      // Ignore requests that were already removed.
+    }
+  }
 }
 
 export async function clearStoredReminderNotifications() {
@@ -91,13 +166,14 @@ export async function scheduleLocalReminder(
     return;
   }
 
-  await cancelLocalReminder(reminderId);
+  await cancelLocalReminder(reminderId, { title, body, time });
 
   const notificationId = await Notifications.scheduleNotificationAsync({
     content: {
       title,
       body,
       sound: true,
+      data: { reminderId },
     },
     trigger: {
       type: Notifications.SchedulableTriggerInputTypes.DAILY,

@@ -91,6 +91,18 @@ export type AdminUser = {
   gender: string | null;
 };
 
+export type DashboardSummary = {
+  daysAnalyzed: number;
+  avgSleepHours: number;
+  avgMoodScore: number;
+  avgStressScore: number;
+  avgWaterLiters: number;
+  totalMealsLogged: number;
+  riskScore: number;
+  riskLevel: string;
+  riskSignals: string[];
+};
+
 let authToken = "";
 let onUnauthorized: (() => void | Promise<void>) | null = null;
 
@@ -171,6 +183,10 @@ export const api = {
   },
   async getDailyLogRange(from: string, to: string) {
     const { data } = await http.get<DailyLog[]>("dailylogs/range", { params: { from, to } });
+    return data;
+  },
+  async getDashboardSummary(days = 7) {
+    const { data } = await http.get<DashboardSummary>("dashboard/summary", { params: { days } });
     return data;
   },
   async createMeal(payload: {
